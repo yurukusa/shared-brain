@@ -1,0 +1,22 @@
+#!/bin/bash
+# brain - Shared Brain CLI
+# AI agents that learn from each other's mistakes — and prove it.
+#
+# Usage:
+#   brain write                  - Add a new lesson (interactive)
+#   brain write -f <file>        - Add lesson from YAML file
+#   brain guard <command>        - Check command against known lessons
+#   brain check <topic>          - Search lessons by keyword
+#   brain list                   - List all lessons
+#   brain audit [--json]         - Show compliance report
+#   brain stats                  - Quick stats summary
+#   brain hook install           - Install as Claude Code hook
+
+BRAIN_DIR="${BRAIN_HOME:-$HOME/.brain}"
+BRAIN_ENGINE="$(dirname "$(readlink -f "$0")")/brain_engine.py"
+
+# Ensure brain directory exists
+mkdir -p "$BRAIN_DIR/lessons" "$BRAIN_DIR/audit"
+
+# Delegate to Python engine
+exec python3 "$BRAIN_ENGINE" "$@"

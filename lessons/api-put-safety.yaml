@@ -1,0 +1,41 @@
+id: api-put-safety
+severity: critical
+created: "2026-02-08"
+violated_count: 2
+last_violated: "2026-02-09"
+
+trigger_patterns:
+  - "PUT /api/"
+  - "requests\\.put"
+  - "curl.*-X PUT"
+  - "fetch.*method.*PUT"
+  - "\\.put\\("
+  - "PUT https?://"
+
+lesson: |
+  REST PUT replaces the ENTIRE resource. Fields not included in the
+  request body will be overwritten with empty/default values.
+
+  This lesson exists because of a real incident: an AI agent used PUT
+  to add a footer to Zenn articles, but only sent the footer text.
+  The API replaced the entire article body with just the footer.
+  5 articles were destroyed. This happened TWICE in 2 days.
+
+  ALWAYS:
+  1. GET the current resource state first
+  2. Modify only the fields you need in the response data
+  3. Send ALL fields in the PUT body
+  4. Test on 1 item before batch operations
+  5. Verify the result after the PUT
+
+checklist:
+  - "GET the current resource state"
+  - "PUT body contains ALL required fields"
+  - "Test on 1 item before batch operation"
+  - "Verify result after update"
+
+source:
+  incident: "Zenn 5-article deletion (2026-02-09)"
+  url: "https://zenn.dev/yurukusa/articles/fc378dfbb37a5b"
+
+tags: [api, destructive, data-loss, rest]
