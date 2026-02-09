@@ -57,7 +57,9 @@ brain audit
 | `brain write -f <file>` | Add lesson from YAML file |
 | `brain audit` | Compliance report |
 | `brain stats` | Quick summary |
-| `brain hook install` | Hook installation guide |
+| `brain hook install` | Auto-install guard as Claude Code hook |
+| `brain hook uninstall` | Remove brain guard hook |
+| `brain hook status` | Check if hook is installed |
 
 ## How It Works
 
@@ -90,15 +92,16 @@ Every guard check is logged to `~/.brain/audit.jsonl`:
 ## Integration
 
 ### As a Claude Code Hook
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "Bash",
-      "command": "brain guard \"$TOOL_INPUT\""
-    }]
-  }
-}
+```bash
+# One command — auto-installs into ~/.claude/settings.json
+brain hook install
+
+# Verify
+brain hook status
+# 🟢 Installed
+
+# Remove if needed
+brain hook uninstall
 ```
 
 ### Environment Variables

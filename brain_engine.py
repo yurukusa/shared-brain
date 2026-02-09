@@ -546,31 +546,78 @@ def cmd_stats(args):
 
 
 def cmd_hook(args):
-    """Install brain guard as a hook."""
-    if not args or args[0] != "install":
-        print("Usage: brain hook install", file=sys.stderr)
+    """Install or uninstall brain guard as a Claude Code hook."""
+    if not args or args[0] not in ("install", "uninstall", "status"):
+        print("Usage: brain hook install|uninstall|status", file=sys.stderr)
         return 1
 
-    # Show the hook config for Claude Code
-    hook_config = {
-        "hooks": {
-            "PreToolUse": [
-                {
-                    "matcher": "Bash",
-                    "command": f"{Path(__file__).parent / 'brain'} guard \"$TOOL_INPUT\"",
-                }
-            ]
-        }
+    settings_path = Path.home() / ".claude" / "settings.json"
+    brain_cmd = str(Path(__file__).parent / "brain")
+
+    # The hook entry we want to add/remove
+    hook_entry = {
+        "matcher": "Bash",
+        "hooks": [
+            {
+                "type": "command",
+                "command": f"{brain_cmd} guard \"$TOOL_INPUT\""
+            }
+        ]
     }
 
-    print("📎 Claude Code Hook Configuration")
-    print("=" * 50)
-    print("Add this to your ~/.claude/settings.json:")
-    print()
-    print(json.dumps(hook_config, indent=2))
-    print()
-    print("Or run brain guard manually before risky operations:")
-    print(f'  {Path(__file__).parent / "brain"} guard "PUT /api/articles/my-article"')
+    if args[0] == "status":
+        if not settings_path.exists():
+            print("⚪ Not installed (settings.json not found)")
+            return 0
+        settings = json.loads(settings_path.read_text())
+        hooks = settings.get("hooks", {}).get("PreToolUse", [])
+        installed = any("brain guard" in json.dumps(h) for h in hooks)
+        print(f"{'🟢 Installed' if installed else '⚪ Not installed'}")
+        return 0
+
+    if args[0] == "uninstall":
+        if not settings_path.exists():
+            print("Nothing to uninstall (settings.json not found)")
+            return 0
+        settings = json.loads(settings_path.read_text())
+        hooks = settings.get("hooks", {}).get("PreToolUse", [])
+        new_hooks = [h for h in hooks if "brain guard" not in json.dumps(h)]
+        if len(new_hooks) == len(hooks):
+            print("⚪ Brain guard hook not found in settings")
+            return 0
+        settings["hooks"]["PreToolUse"] = new_hooks
+        settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+        print("🗑️  Brain guard hook removed from Claude Code")
+        return 0
+
+    # --- install ---
+    if not settings_path.exists():
+        # Create minimal settings with our hook
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings = {"hooks": {"PreToolUse": [hook_entry]}}
+        settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+        print(f"🧠 Brain guard installed! (created {settings_path})")
+        return 0
+
+    settings = json.loads(settings_path.read_text())
+
+    # Check if already installed
+    existing_hooks = settings.get("hooks", {}).get("PreToolUse", [])
+    if any("brain guard" in json.dumps(h) for h in existing_hooks):
+        print("🟢 Brain guard hook already installed")
+        return 0
+
+    # Merge into existing settings
+    if "hooks" not in settings:
+        settings["hooks"] = {}
+    if "PreToolUse" not in settings["hooks"]:
+        settings["hooks"]["PreToolUse"] = []
+
+    settings["hooks"]["PreToolUse"].append(hook_entry)
+    settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+    print(f"🧠 Brain guard installed into Claude Code!")
+    print(f"   Every Bash command will now be checked against lessons.")
+    print(f"   Run 'brain hook status' to verify.")
     return 0
 
 
@@ -586,7 +633,9 @@ Usage:
   brain list                  List all lessons
   brain audit [--json]        Show compliance report
   brain stats                 Quick stats summary
-  brain hook install          Show hook installation instructions
+  brain hook install          Auto-install guard as Claude Code hook
+  brain hook uninstall        Remove brain guard hook
+  brain hook status           Check if hook is installed
 
 Environment:
   BRAIN_HOME    Override brain directory (default: ~/.brain)
