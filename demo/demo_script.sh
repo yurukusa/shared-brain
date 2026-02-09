@@ -59,7 +59,7 @@ echo ""
 echo '  $ brain guard "curl -X PUT https://api.zenn.dev/api/articles/abc"'
 echo ""
 
-echo "y" | "$BRAIN" guard "curl -X PUT https://api.zenn.dev/api/articles/abc123"
+"$BRAIN" guard --auto-confirm "curl -X PUT https://api.zenn.dev/api/articles/abc123"
 echo ""
 read -p "Press Enter to see a different agent..." _
 
@@ -75,7 +75,7 @@ export BRAIN_AGENT="subagent-3"
 echo '  $ BRAIN_AGENT=subagent-3 brain guard "requests.put(url, json=data)"'
 echo ""
 
-echo "y" | "$BRAIN" guard 'requests.put("https://api.example.com/articles/123", json={"title": "oops"})'
+"$BRAIN" guard --auto-confirm 'requests.put("https://api.example.com/articles/123", json={"title": "oops"})'
 echo ""
 
 echo "The lesson was learned ONCE. Every agent benefits."
