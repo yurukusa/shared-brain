@@ -10,6 +10,7 @@
 #   brain list                   - List all lessons
 #   brain audit [--json]         - Show compliance report
 #   brain stats                  - Quick stats summary
+#   brain export                 - Export lessons (markdown/json)
 #   brain hook install           - Install as Claude Code hook
 
 BRAIN_DIR="${BRAIN_HOME:-$HOME/.brain}"

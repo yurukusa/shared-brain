@@ -166,6 +166,8 @@ def load_all_lessons() -> list:
         for f in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
             try:
                 lesson = load_yaml(f)
+                if not lesson or not isinstance(lesson, dict):
+                    continue
                 lesson["_file"] = str(f)
                 lid = lesson.get("id", f.stem)
                 if lid not in seen_ids:
@@ -294,16 +296,24 @@ def log_audit(agent: str, action: str, lesson_ids, checked: bool, followed, note
 
 
 def load_audit() -> list:
-    """Load all audit entries."""
+    """Load all audit entries. Skips corrupt lines gracefully."""
     if not AUDIT_FILE.exists():
         return []
+    try:
+        text = AUDIT_FILE.read_text()
+    except (OSError, IOError) as e:
+        print(f"Warning: Could not read audit file: {e}", file=sys.stderr)
+        return []
+    if not text.strip():
+        return []
     entries = []
-    for line in AUDIT_FILE.read_text().strip().split("\n"):
-        if line.strip():
-            try:
-                entries.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
+    for i, line in enumerate(text.strip().split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            print(f"Warning: Skipping corrupt audit entry on line {i}", file=sys.stderr)
     return entries
 
 
@@ -621,6 +631,85 @@ def cmd_hook(args):
     return 0
 
 
+def cmd_export(args):
+    """Export lessons to Markdown or JSON format."""
+    fmt = "md"
+    output_file = None
+
+    # Parse args
+    i = 0
+    while i < len(args):
+        if args[i] == "--format" and i + 1 < len(args):
+            fmt = args[i + 1].lower()
+            i += 2
+        elif args[i] == "--output" and i + 1 < len(args):
+            output_file = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    if fmt not in ("md", "json", "markdown"):
+        print(f"Error: Unknown format '{fmt}'. Use 'md' or 'json'.", file=sys.stderr)
+        return 1
+
+    lessons = load_all_lessons()
+
+    if fmt in ("md", "markdown"):
+        lines = ["# Shared Brain — Exported Lessons", ""]
+        lines.append(f"*{len(lessons)} lessons exported on {datetime.date.today().isoformat()}*")
+        lines.append("")
+
+        for lesson in lessons:
+            severity = lesson.get("severity", "info").upper()
+            lid = lesson.get("id", "unknown")
+            icon = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "🔵"
+
+            lines.append(f"## {icon} {lid}")
+            lines.append(f"**Severity:** {severity}")
+
+            text = lesson.get("lesson", "")
+            if text:
+                lines.append("")
+                lines.append(text.strip())
+
+            checklist = lesson.get("checklist", [])
+            if checklist:
+                lines.append("")
+                for item in checklist:
+                    lines.append(f"- [ ] {item}")
+
+            patterns = lesson.get("trigger_patterns", [])
+            if patterns:
+                lines.append("")
+                lines.append(f"**Triggers:** `{'`, `'.join(patterns)}`")
+
+            tags = lesson.get("tags", [])
+            if tags:
+                tag_list = tags if isinstance(tags, list) else [tags]
+                lines.append(f"**Tags:** {', '.join(tag_list)}")
+
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        content = "\n".join(lines)
+    else:
+        # JSON export — strip internal fields
+        clean = []
+        for lesson in lessons:
+            entry = {k: v for k, v in lesson.items() if not k.startswith("_")}
+            clean.append(entry)
+        content = json.dumps(clean, indent=2, ensure_ascii=False)
+
+    if output_file:
+        Path(output_file).write_text(content)
+        print(f"✅ Exported {len(lessons)} lessons to {output_file}")
+    else:
+        print(content)
+
+    return 0
+
+
 def cmd_help(args=None):
     """Show help."""
     print("""🧠 Shared Brain - AI agents that learn from each other's mistakes
@@ -633,6 +722,8 @@ Usage:
   brain list                  List all lessons
   brain audit [--json]        Show compliance report
   brain stats                 Quick stats summary
+  brain export [--format md|json] [--output file]
+                              Export lessons for other projects
   brain hook install          Auto-install guard as Claude Code hook
   brain hook uninstall        Remove brain guard hook
   brain hook status           Check if hook is installed
@@ -645,6 +736,7 @@ Examples:
   brain guard "curl -X PUT https://api.example.com/articles/123"
   brain check "api safety"
   brain write -f my-lesson.yaml
+  brain export --format json --output lessons.json
 """)
     return 0
 
@@ -658,6 +750,7 @@ COMMANDS = {
     "list": cmd_list,
     "audit": cmd_audit,
     "stats": cmd_stats,
+    "export": cmd_export,
     "hook": cmd_hook,
     "help": cmd_help,
     "--help": cmd_help,

@@ -1,5 +1,10 @@
 # 🧠 Shared Brain
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)]()
+[![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
+
 **AI agents that learn from each other's mistakes — and prove it.**
 
 ## Demo
@@ -57,6 +62,7 @@ brain audit
 | `brain write -f <file>` | Add lesson from YAML file |
 | `brain audit` | Compliance report |
 | `brain stats` | Quick summary |
+| `brain export` | Export lessons (markdown/json) |
 | `brain hook install` | Auto-install guard as Claude Code hook |
 | `brain hook uninstall` | Remove brain guard hook |
 | `brain hook status` | Check if hook is installed |
