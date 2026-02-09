@@ -1,0 +1,29 @@
+id: test-before-deploy
+severity: warning
+created: "2026-02-10"
+
+trigger_patterns:
+  - "deploy"
+  - "push.*main"
+  - "push.*master"
+  - "push.*production"
+  - "npm publish"
+  - "pip upload"
+  - "docker push"
+
+lesson: |
+  Always run tests before deploying or publishing.
+  A broken deploy can affect all users instantly.
+
+  ALWAYS:
+  1. Run the full test suite
+  2. Check for lint/type errors
+  3. Verify the build succeeds
+  4. Test critical paths manually if possible
+
+checklist:
+  - "All tests passing"
+  - "No lint or type errors"
+  - "Build succeeds"
+
+tags: [deploy, testing, ci]

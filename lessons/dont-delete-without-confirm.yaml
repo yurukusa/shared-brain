@@ -1,0 +1,29 @@
+id: dont-delete-without-confirm
+severity: critical
+created: "2026-02-10"
+
+trigger_patterns:
+  - "rm -rf"
+  - "rmdir"
+  - "shutil.rmtree"
+  - "os.remove"
+  - "unlink"
+  - "DELETE /api/"
+  - "curl.*-X DELETE"
+
+lesson: |
+  Never delete files or resources without confirmation and a backup plan.
+  Deletion is often irreversible, especially on remote systems.
+
+  ALWAYS:
+  1. List what will be deleted first (dry run)
+  2. Confirm the target is correct
+  3. Have a backup or recovery plan
+  4. Prefer soft-delete (archive) over hard-delete when possible
+
+checklist:
+  - "Dry run completed"
+  - "Target confirmed correct"
+  - "Backup or recovery plan exists"
+
+tags: [destructive, files, safety]

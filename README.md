@@ -4,6 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)]()
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
+[![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)]()
 
 **AI agents that learn from each other's mistakes — and prove it.**
 
@@ -114,13 +115,23 @@ brain hook uninstall
 - `BRAIN_HOME` — Override brain directory (default: `~/.brain`)
 - `BRAIN_AGENT` — Set agent name for audit logging
 
-## Built-in Lessons
+## Built-in Lessons (Starter Pack)
+
+Ships with 11 lessons covering the most common agent mistakes:
 
 | ID | Severity | What It Catches |
 |----|----------|----------------|
 | `api-put-safety` | 🔴 Critical | PUT without GET (data loss) |
 | `git-force-push` | 🔴 Critical | Force push, hard reset, rm -rf |
+| `no-secrets-in-code` | 🔴 Critical | API keys/passwords in commits |
+| `no-production-db-direct` | 🔴 Critical | Destructive queries on production DB |
+| `dont-delete-without-confirm` | 🔴 Critical | Deleting files/resources without backup |
 | `verify-before-claim` | 🟡 Warning | Claiming success without verification |
+| `test-before-deploy` | 🟡 Warning | Deploying without running tests |
+| `backup-before-migration` | 🟡 Warning | DB migration without backup |
+| `check-rate-limits` | 🟡 Warning | Bulk API requests without rate limiting |
+| `validate-input-boundaries` | 🟡 Warning | Unsanitized external input |
+| `read-error-messages` | ℹ️ Info | Ignoring error messages when debugging |
 
 ## The Story Behind This
 
