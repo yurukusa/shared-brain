@@ -213,11 +213,11 @@ shared-brain/
 ## MVP Scope (Today)
 
 1. [x] Design doc (this file)
-2. [ ] `brain` CLI with `write`, `guard`, `check`, `list`, `audit` commands
-3. [ ] 3 built-in lessons (PUT safety, force push, destructive delete)
-4. [ ] Audit logging (JSONL)
-5. [ ] Demo script for hackathon
-6. [ ] README with installation instructions
+2. [x] `brain` CLI with `write`, `guard`, `check`, `list`, `audit` commands
+3. [x] 3 built-in lessons (PUT safety, force push, destructive delete)
+4. [x] Audit logging (JSONL)
+5. [x] Demo script for hackathon
+6. [x] README with installation instructions
 
 ## Post-Hackathon
 
