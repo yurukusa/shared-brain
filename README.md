@@ -2,6 +2,10 @@
 
 **AI agents that learn from each other's mistakes — and prove it.**
 
+## Demo
+
+[![asciicast](https://asciinema.org/a/M60qmrt7QscqWVLb.svg)](https://asciinema.org/a/M60qmrt7QscqWVLb)
+
 ## The Problem
 
 An AI agent deleted 5 articles by using `PUT` without first doing `GET`. We wrote a lesson: "Always GET before PUT." The next day, the **same agent made the same mistake**. The lesson existed — but nobody checked it.
