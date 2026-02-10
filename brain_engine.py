@@ -10,6 +10,7 @@ import json
 import re
 import datetime
 import glob as globmod
+import subprocess
 from pathlib import Path
 
 try:
@@ -179,6 +180,76 @@ def load_all_lessons() -> list:
     return lessons
 
 
+# --- Security helpers ---
+
+def _check_regex_safety(pattern: str) -> bool:
+    """Heuristic check for patterns likely to cause catastrophic backtracking (ReDoS).
+
+    Detects nested quantifiers and overlapping alternation — the most common ReDoS causes.
+    Returns True if the pattern looks safe, False if suspicious.
+    """
+    # Nested quantifiers: (x+)+, (x*)+, (x+)*, (x*)*
+    if re.search(r'\([^)]*[+*][^)]*\)\s*[+*?]', pattern):
+        return False
+    # Overlapping alternation under quantifier: (a|a)+
+    if re.search(r'\([^)]*\|[^)]*\)\s*[+*]', pattern):
+        return False
+    return True
+
+
+def _safe_regex_search(pattern: str, text: str, timeout: float = 0.5):
+    """Regex search with ReDoS protection.
+
+    - Safe-looking patterns: uses re.search() directly (fast)
+    - Suspicious patterns: uses a subprocess with hard timeout (safe)
+    - Invalid patterns: raises re.error for the caller to handle
+
+    Returns a match object or truthy value if found, None if no match or timeout.
+    """
+    # Validate syntax first
+    try:
+        re.compile(pattern, re.IGNORECASE)
+    except re.error:
+        raise
+
+    if _check_regex_safety(pattern):
+        # Fast path: pattern looks safe, use directly
+        return re.search(pattern, text, re.IGNORECASE)
+
+    # Suspicious pattern: use subprocess for hard timeout (GIL-proof)
+    script = (
+        f"import re,sys\n"
+        f"m=re.search({pattern!r},{text!r},re.IGNORECASE)\n"
+        f"sys.exit(0 if m else 1)"
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            timeout=timeout,
+            capture_output=True,
+        )
+        return True if result.returncode == 0 else None
+    except subprocess.TimeoutExpired:
+        print(f"Warning: Regex pattern timed out (possible ReDoS): {pattern[:50]}", file=sys.stderr)
+        return None
+
+
+def _sanitize_lesson_id(lid: str) -> str:
+    """Sanitize lesson ID to prevent path traversal.
+
+    Only allows word characters (including Unicode), hyphens, and dots (not ..).
+    Strips directory separators and parent references.
+    """
+    # Remove path separators and parent directory references
+    sanitized = re.sub(r'[/\\]', '', lid)
+    sanitized = re.sub(r'\.\.+', '', sanitized)
+    # Remove remaining non-word characters except hyphens
+    sanitized = re.sub(r'[^\w-]', '', sanitized, flags=re.UNICODE)
+    if not sanitized:
+        raise ValueError(f"Invalid lesson ID after sanitization: '{lid}'")
+    return sanitized
+
+
 # --- Guard engine ---
 
 def guard(command: str, agent: str = "unknown", auto_confirm: bool = False) -> bool:
@@ -192,7 +263,7 @@ def guard(command: str, agent: str = "unknown", auto_confirm: bool = False) -> b
             continue
         for pattern in patterns:
             try:
-                if re.search(pattern, command, re.IGNORECASE):
+                if _safe_regex_search(pattern, command):
                     matches.append(lesson)
                     break
             except re.error:
@@ -330,8 +401,19 @@ def cmd_write(args):
             print(f"  Create it first, or use 'brain write' to add a lesson interactively.", file=sys.stderr)
             return 1
         lesson = load_yaml(src)
-        lid = lesson.get("id", src.stem)
+        raw_lid = lesson.get("id", src.stem)
+        try:
+            lid = _sanitize_lesson_id(raw_lid)
+        except ValueError:
+            print(f"Error: Invalid lesson ID '{raw_lid}'.", file=sys.stderr)
+            print(f"  Lesson IDs must contain only word characters and hyphens.", file=sys.stderr)
+            print(f"  Path separators (/, \\) and '..' are not allowed.", file=sys.stderr)
+            return 1
         dest = LESSONS_DIR / f"{lid}.yaml"
+        # Defense-in-depth: verify destination stays inside LESSONS_DIR
+        if not str(dest.resolve()).startswith(str(LESSONS_DIR.resolve())):
+            print(f"Error: Path traversal detected in lesson ID '{raw_lid}'.", file=sys.stderr)
+            return 1
         import shutil
         shutil.copy2(src, dest)
         print(f"✅ Lesson '{lid}' written to {dest}")
@@ -341,9 +423,14 @@ def cmd_write(args):
     print("📝 New Lesson")
     print("-" * 40)
 
-    lid = input("ID (short, kebab-case): ").strip()
-    if not lid:
+    raw_lid = input("ID (short, kebab-case): ").strip()
+    if not raw_lid:
         print("Aborted.")
+        return 1
+    try:
+        lid = _sanitize_lesson_id(raw_lid)
+    except ValueError:
+        print(f"Error: Invalid lesson ID '{raw_lid}'. Use only word characters and hyphens.")
         return 1
 
     severity = input("Severity (critical/warning/info) [warning]: ").strip() or "warning"
@@ -385,15 +472,30 @@ def cmd_write(args):
 def cmd_guard(args):
     """Check a command against lessons."""
     auto_confirm = "--auto-confirm" in args
-    args = [a for a in args if a != "--auto-confirm"]
+    from_env = "--from-env" in args
+    args = [a for a in args if a not in ("--auto-confirm", "--from-env")]
 
-    if not args:
+    if from_env:
+        # Read tool input from environment variable (safe from shell injection)
+        tool_input_raw = os.environ.get("TOOL_INPUT", "")
+        if not tool_input_raw:
+            return 0  # No input to check
+        try:
+            tool_input = json.loads(tool_input_raw)
+            command = tool_input.get("command", "")
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, use as-is
+            command = tool_input_raw
+        if not command:
+            return 0
+    elif args:
+        command = " ".join(args)
+    else:
         print("Error: No command specified.", file=sys.stderr)
         print("  brain guard checks a command against known lessons before execution.", file=sys.stderr)
         print("  Usage: brain guard \"curl -X PUT https://api.example.com/articles/123\"", file=sys.stderr)
         return 1
 
-    command = " ".join(args)
     agent = os.environ.get("BRAIN_AGENT", "cli-user")
 
     safe = guard(command, agent, auto_confirm=auto_confirm)
@@ -573,12 +675,13 @@ def cmd_hook(args):
     brain_cmd = str(Path(__file__).parent / "brain")
 
     # The hook entry we want to add/remove
+    # Uses --from-env to read $TOOL_INPUT via os.environ (avoids shell injection)
     hook_entry = {
         "matcher": "Bash",
         "hooks": [
             {
                 "type": "command",
-                "command": f"{brain_cmd} guard \"$TOOL_INPUT\""
+                "command": f"{brain_cmd} guard --from-env"
             }
         ]
     }

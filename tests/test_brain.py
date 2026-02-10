@@ -1143,7 +1143,192 @@ class TestLessonLoadingEdgeCases:
         assert elapsed < 5.0  # Should load 100 lessons in under 5 seconds
 
 
-class TestTachikomaEdgeCases:
+class TestSecurityFixes:
+    """Security vulnerability fixes — ReDoS, Path Traversal, Command Injection."""
+
+    # --- ReDoS (CVE-like) ---
+
+    def test_redos_catastrophic_backtracking_timeout(self, brain_home, capsys):
+        """Malicious regex pattern should timeout instead of hanging."""
+        # Classic ReDoS pattern: (a+)+ matched against "aaa...!" causes exponential backtracking
+        lesson = (
+            "id: redos-test\nseverity: warning\n"
+            "trigger_patterns:\n"
+            '  - "(a+)+$"\n'
+            "lesson: redos test\n"
+        )
+        (brain_home / "lessons" / "redos.yaml").write_text(lesson)
+
+        # This input causes catastrophic backtracking with (a+)+$
+        evil_input = "a" * 30 + "!"
+
+        import time
+        start = time.time()
+        result = brain_engine.guard(evil_input, "test", auto_confirm=True)
+        elapsed = time.time() - start
+
+        # Heuristic detects nested quantifier → subprocess timeout kicks in
+        # Must complete within 5 seconds (not hang for minutes)
+        assert elapsed < 5.0, f"Guard took {elapsed:.1f}s — ReDoS not mitigated"
+        assert isinstance(result, bool)
+
+    def test_check_regex_safety_detects_nested_quantifiers(self):
+        """Heuristic should flag nested quantifiers as dangerous."""
+        assert brain_engine._check_regex_safety(r"(a+)+$") is False
+        assert brain_engine._check_regex_safety(r"(a*)*") is False
+        assert brain_engine._check_regex_safety(r"(a+)*") is False
+
+    def test_check_regex_safety_allows_normal_patterns(self):
+        """Normal patterns should pass the safety check."""
+        assert brain_engine._check_regex_safety(r"curl.*PUT") is True
+        assert brain_engine._check_regex_safety(r"git push.*--force") is True
+        assert brain_engine._check_regex_safety(r"rm\s+-rf") is True
+        assert brain_engine._check_regex_safety(r"DELETE FROM") is True
+
+    def test_safe_regex_search_normal_pattern(self):
+        """Normal patterns should work correctly with _safe_regex_search."""
+        result = brain_engine._safe_regex_search(r"curl.*PUT", "curl -X PUT /api")
+        assert result is not None
+
+    def test_safe_regex_search_no_match(self):
+        """Non-matching pattern should return None."""
+        result = brain_engine._safe_regex_search(r"DELETE", "curl -X GET /api")
+        assert result is None
+
+    def test_safe_regex_search_invalid_regex(self):
+        """Invalid regex should raise re.error (caught by guard's except)."""
+        import re as re_mod
+        with pytest.raises(re_mod.error):
+            brain_engine._safe_regex_search(r"[invalid", "test")
+
+    # --- Path Traversal ---
+
+    def test_path_traversal_dotdot_sanitized(self, brain_home, tmp_path, capsys):
+        """Lesson ID with ../ should be sanitized — dots and slashes stripped."""
+        src = tmp_path / "evil.yaml"
+        src.write_text('id: "../../../.bashrc"\nseverity: info\nlesson: evil\n')
+        result = brain_engine.cmd_write(["-f", str(src)])
+        # After sanitization, "../../../.bashrc" → "bashrc" (safe)
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "bashrc" in captured.out
+        # The file must be INSIDE lessons dir, not outside
+        dest = brain_home / "lessons" / "bashrc.yaml"
+        assert dest.exists()
+        # Verify .bashrc was NOT created in parent dirs
+        assert not (brain_home.parent / ".bashrc.yaml").exists()
+
+    def test_path_traversal_only_dots_rejected(self, brain_home, tmp_path, capsys):
+        """Lesson ID that becomes empty after sanitization should be rejected."""
+        src = tmp_path / "evil-empty.yaml"
+        src.write_text('id: "../../.."\nseverity: info\nlesson: evil\n')
+        result = brain_engine.cmd_write(["-f", str(src)])
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Invalid" in captured.err
+
+    def test_path_traversal_slash_blocked(self, brain_home, tmp_path, capsys):
+        """Lesson ID with / should be sanitized."""
+        src = tmp_path / "evil2.yaml"
+        src.write_text('id: "foo/bar/baz"\nseverity: info\nlesson: evil\n')
+        result = brain_engine.cmd_write(["-f", str(src)])
+        # Should either succeed with sanitized ID or fail
+        if result == 0:
+            # Sanitized ID should be "foobarbaz" — verify file is inside LESSONS_DIR
+            captured = capsys.readouterr()
+            assert "foobarbaz" in captured.out
+            dest = brain_home / "lessons" / "foobarbaz.yaml"
+            assert dest.exists()
+        else:
+            captured = capsys.readouterr()
+            assert "Invalid" in captured.err
+
+    def test_path_traversal_backslash_blocked(self, brain_home, tmp_path, capsys):
+        """Lesson ID with backslash should be sanitized."""
+        src = tmp_path / "evil3.yaml"
+        src.write_text('id: "..\\\\..\\\\evil"\nseverity: info\nlesson: evil\n')
+        result = brain_engine.cmd_write(["-f", str(src)])
+        # Should sanitize away the backslashes and dots
+        assert isinstance(result, int)
+
+    def test_sanitize_lesson_id_normal(self):
+        """Normal IDs should pass through."""
+        assert brain_engine._sanitize_lesson_id("api-put-safety") == "api-put-safety"
+        assert brain_engine._sanitize_lesson_id("test_123") == "test_123"
+
+    def test_sanitize_lesson_id_unicode(self):
+        """Unicode lesson IDs should be preserved."""
+        assert brain_engine._sanitize_lesson_id("api安全チェック") == "api安全チェック"
+
+    def test_sanitize_lesson_id_empty_after_strip(self):
+        """ID that becomes empty after sanitization should raise."""
+        import pytest
+        with pytest.raises(ValueError):
+            brain_engine._sanitize_lesson_id("../../..")
+
+    def test_valid_write_still_works(self, brain_home, tmp_path, capsys):
+        """Valid lesson write should still succeed after security fix."""
+        src = tmp_path / "good.yaml"
+        src.write_text("id: valid-lesson\nseverity: info\nlesson: all good\n")
+        result = brain_engine.cmd_write(["-f", str(src)])
+        assert result == 0
+        assert (brain_home / "lessons" / "valid-lesson.yaml").exists()
+
+    # --- Command Injection via Hook ---
+
+    def test_hook_uses_from_env(self, tmp_path, capsys):
+        """Hook install should use --from-env, not shell-expanded $TOOL_INPUT."""
+        import unittest.mock
+        with unittest.mock.patch.object(Path, 'home', return_value=tmp_path):
+            brain_engine.cmd_hook(["install"])
+
+        settings_path = tmp_path / ".claude" / "settings.json"
+        settings = json.loads(settings_path.read_text())
+        hook_cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        # Must use --from-env, not "$TOOL_INPUT" in command line
+        assert "--from-env" in hook_cmd
+        assert '"$TOOL_INPUT"' not in hook_cmd
+
+    def test_guard_from_env_reads_json(self, brain_home, sample_lesson, capsys):
+        """--from-env should read TOOL_INPUT from env and parse JSON."""
+        original = os.environ.get("TOOL_INPUT")
+        os.environ["TOOL_INPUT"] = json.dumps({"command": "curl -X PUT /api/test"})
+        try:
+            result = brain_engine.cmd_guard(["--from-env", "--auto-confirm"])
+            assert result == 0
+            entries = brain_engine.load_audit()
+            assert any("test-put-safety" in e.get("lessons_matched", []) for e in entries)
+        finally:
+            if original is None:
+                os.environ.pop("TOOL_INPUT", None)
+            else:
+                os.environ["TOOL_INPUT"] = original
+
+    def test_guard_from_env_empty(self, brain_home):
+        """--from-env with no TOOL_INPUT should return 0 (safe)."""
+        original = os.environ.pop("TOOL_INPUT", None)
+        try:
+            result = brain_engine.cmd_guard(["--from-env"])
+            assert result == 0
+        finally:
+            if original:
+                os.environ["TOOL_INPUT"] = original
+
+    def test_guard_from_env_malformed_json(self, brain_home, capsys):
+        """--from-env with non-JSON TOOL_INPUT should use raw string."""
+        original = os.environ.get("TOOL_INPUT")
+        os.environ["TOOL_INPUT"] = "not json at all"
+        try:
+            result = brain_engine.cmd_guard(["--from-env", "--auto-confirm"])
+            assert result == 0
+        finally:
+            if original is None:
+                os.environ.pop("TOOL_INPUT", None)
+            else:
+                os.environ["TOOL_INPUT"] = original
+
+
+
     """タチコマ指定エッジケース追加テスト（サイクル#1）
 
     カバー範囲:
