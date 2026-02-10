@@ -710,6 +710,15 @@ def cmd_export(args):
     return 0
 
 
+def cmd_benchmark(args):
+    """Run performance benchmark."""
+    benchmark_script = Path(__file__).parent / "tests" / "benchmark.py"
+    if not benchmark_script.exists():
+        print(f"Error: benchmark script not found at {benchmark_script}", file=sys.stderr)
+        return 1
+    os.execvp(sys.executable, [sys.executable, str(benchmark_script)])
+
+
 def cmd_tutorial(args):
     """Interactive tutorial — walk through lesson creation, guard, and audit."""
     import time
@@ -918,6 +927,7 @@ COMMANDS = {
     "export": cmd_export,
     "hook": cmd_hook,
     "tutorial": cmd_tutorial,
+    "benchmark": cmd_benchmark,
     "help": cmd_help,
     "--help": cmd_help,
     "-h": cmd_help,
