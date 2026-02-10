@@ -49,5 +49,8 @@ Proceed? [y/N]
 
 - [GitHub Repository](https://github.com/yurukusa/shared-brain)
 - [Installation Guide](./installation)
+- [Tutorial](./tutorial)
 - [Writing Lessons](./lessons)
 - [API Reference](./api)
+- [FAQ](./faq)
+- [Troubleshooting](./troubleshooting)
