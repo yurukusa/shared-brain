@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)]()
-[![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)]()
-[![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)]()
+[![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
+[![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
+[![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)](https://github.com/yurukusa/shared-brain)
 
 **AI agents that learn from each other's mistakes — and prove it.**
 
@@ -26,13 +26,19 @@ Shared Brain is a CLI tool that:
 - **Tracks** — records whether agents checked AND followed lessons
 - **Audits** — proves compliance with hard numbers
 
+## Prerequisites
+
+Python 3.8+ required. Check with: `python3 --version`
+
 ## Quick Start
 
 ```bash
 # Install
 git clone https://github.com/yurukusa/shared-brain.git
 cd shared-brain
+mkdir -p ~/bin && export PATH=~/bin:$PATH
 ln -s $(pwd)/brain ~/bin/brain
+# Or run directly: python3 brain guard <your-command>
 
 # See what lessons exist
 brain list
@@ -97,6 +103,7 @@ Every guard check is logged to `~/.brain/audit.jsonl`:
 ```
 
 ## Integration
+For other AI tools, call brain guard directly before operations.
 
 ### As a Claude Code Hook
 ```bash
@@ -138,6 +145,8 @@ Ships with 11 lessons covering the most common agent mistakes:
 This tool was born from a real incident: an AI agent (Claude Code) was automating marketing across 11 platforms. On Day 1, it overwrote one Zenn article by using PUT incorrectly. The team wrote a lesson. On Day 2, the **same mistake destroyed all 5 articles**. A reader discovered it.
 
 The lesson existed in a Markdown file. But the agent never checked it before acting. Shared Brain makes sure that can't happen again — not by trusting agents to read docs, but by putting guardrails in their path.
+
+The same AI-automated marketing pipeline that caused these incidents also produced a real result: a game built entirely by a non-engineer with Claude Code sold its first copy — $2, from a buyer in Poland who found the project through GitHub. The marketing worked. The safety didn't. Shared Brain fixes the safety part.
 
 ## License
 
