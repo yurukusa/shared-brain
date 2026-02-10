@@ -710,6 +710,170 @@ def cmd_export(args):
     return 0
 
 
+def cmd_tutorial(args):
+    """Interactive tutorial — walk through lesson creation, guard, and audit."""
+    import time
+
+    CYAN = "\033[1;36m"
+    GREEN = "\033[1;32m"
+    YELLOW = "\033[1;33m"
+    RED = "\033[1;31m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+    def step(num, title):
+        print(f"\n{CYAN}{'─'*50}{RESET}")
+        print(f"{CYAN}  Step {num}: {title}{RESET}")
+        print(f"{CYAN}{'─'*50}{RESET}\n")
+
+    def pause(msg="Press Enter to continue..."):
+        if sys.stdin.isatty():
+            input(f"\n{BOLD}{msg}{RESET}")
+        else:
+            print()
+
+    print(f"""
+{CYAN}╔══════════════════════════════════════════════╗
+║         🧠 Shared Brain Tutorial             ║
+║                                              ║
+║  Learn how to create lessons, guard commands,║
+║  and audit compliance — in 3 steps.          ║
+╚══════════════════════════════════════════════╝{RESET}
+""")
+
+    # --- Step 1: Create a tutorial lesson ---
+    step(1, "Create a lesson")
+
+    tutorial_lesson_id = "tutorial-example"
+    tutorial_file = LESSONS_DIR / f"{tutorial_lesson_id}.yaml"
+
+    print(f"""Lessons teach agents what {RED}not{RESET} to do.
+Each lesson has:
+  • {BOLD}trigger_patterns{RESET} — regex patterns that match risky commands
+  • {BOLD}severity{RESET} — critical, warning, or info
+  • {BOLD}checklist{RESET} — steps to verify before proceeding
+
+Let's create a sample lesson that catches {RED}rm -rf{RESET} commands.""")
+
+    pause()
+
+    lesson_data = {
+        "id": tutorial_lesson_id,
+        "severity": "critical",
+        "created": datetime.date.today().isoformat(),
+        "violated_count": 0,
+        "trigger_patterns": [
+            r"rm\s+-rf",
+            r"rm\s+-r\s+/",
+        ],
+        "lesson": "rm -rf can permanently delete files with no recovery.\n"
+                  "Always double-check the path and consider using trash instead.",
+        "checklist": [
+            "Verify the target path is correct",
+            "Ensure important files are backed up",
+            "Consider using 'trash' or moving to a temp directory",
+        ],
+        "source": {
+            "incident": "Tutorial example — common agent mistake",
+        },
+        "tags": ["filesystem", "destructive", "tutorial"],
+    }
+
+    dump_yaml(lesson_data, tutorial_file)
+    print(f"""{GREEN}✅ Created lesson:{RESET} {tutorial_lesson_id}
+   File: {tutorial_file}
+
+   Here's what it looks like as YAML:""")
+    print()
+    print(f"   {YELLOW}id:{RESET} {tutorial_lesson_id}")
+    print(f"   {YELLOW}severity:{RESET} critical")
+    print(f"   {YELLOW}trigger_patterns:{RESET}")
+    print(f'     - "rm\\s+-rf"')
+    print(f'     - "rm\\s+-r\\s+/"')
+    print(f"   {YELLOW}lesson:{RESET} |")
+    print(f"     rm -rf can permanently delete files...")
+    print(f"   {YELLOW}checklist:{RESET}")
+    print(f"     - Verify the target path is correct")
+    print(f"     - Ensure important files are backed up")
+
+    # --- Step 2: Test the guard ---
+    step(2, "Test the guard")
+
+    print(f"""Now let's see what happens when an agent tries to run
+a command that matches our lesson.
+
+Running: {BOLD}brain guard "rm -rf /tmp/old-data"{RESET}
+""")
+
+    pause("Press Enter to trigger the guard...")
+    print()
+
+    # Simulate guard output (non-blocking version)
+    guard("rm -rf /tmp/old-data", agent="tutorial-user", auto_confirm=True)
+
+    print(f"""
+{GREEN}The guard matched the command against our lesson and showed
+the warning with a checklist.{RESET}
+
+In real usage:
+  • As a {BOLD}CLI command{RESET}: the user sees this and types y/N
+  • As a {BOLD}Claude Code hook{RESET}: it fires automatically before
+    every Bash command, blocking dangerous operations""")
+
+    # --- Step 3: Check the audit ---
+    step(3, "Check the audit trail")
+
+    print(f"""Every guard check is logged to {BOLD}~/.brain/audit.jsonl{RESET}.
+Let's see what was recorded:
+""")
+
+    pause("Press Enter to view the audit...")
+    print()
+
+    entries = load_audit()
+    if entries:
+        last = entries[-1]
+        ts = last.get("timestamp", "?")[:19]
+        agent = last.get("agent", "?")
+        action = last.get("action", "?")
+        note = last.get("note", "")
+        lessons_matched = last.get("lessons_matched", [])
+
+        print(f"  {GREEN}Latest audit entry:{RESET}")
+        print(f"    Timestamp: {ts}")
+        print(f"    Agent:     {agent}")
+        print(f"    Action:    {action}")
+        print(f"    Lessons:   {', '.join(lessons_matched) if lessons_matched else 'none'}")
+        print(f"    Result:    {note}")
+    else:
+        print("  (No audit entries found)")
+
+    # --- Wrap up ---
+    print(f"""
+{CYAN}{'─'*50}{RESET}
+{CYAN}  Tutorial Complete!{RESET}
+{CYAN}{'─'*50}{RESET}
+
+{GREEN}You've learned the core workflow:{RESET}
+
+  1. {BOLD}brain write{RESET}     — Create lessons from incidents
+  2. {BOLD}brain guard{RESET}     — Check commands before execution
+  3. {BOLD}brain audit{RESET}     — Prove compliance with data
+
+{BOLD}Next steps:{RESET}
+  • Run {CYAN}brain list{RESET} to see all built-in lessons
+  • Run {CYAN}brain hook install{RESET} to auto-guard Claude Code
+  • Run {CYAN}brain write{RESET} to create your own lesson
+""")
+
+    # Clean up tutorial lesson
+    if tutorial_file.exists():
+        tutorial_file.unlink()
+        print(f"  (Tutorial lesson cleaned up)")
+
+    return 0
+
+
 def cmd_help(args=None):
     """Show help."""
     print("""🧠 Shared Brain - AI agents that learn from each other's mistakes
@@ -727,6 +891,7 @@ Usage:
   brain hook install          Auto-install guard as Claude Code hook
   brain hook uninstall        Remove brain guard hook
   brain hook status           Check if hook is installed
+  brain tutorial              Interactive walkthrough for new users
 
 Environment:
   BRAIN_HOME    Override brain directory (default: ~/.brain)
@@ -752,6 +917,7 @@ COMMANDS = {
     "stats": cmd_stats,
     "export": cmd_export,
     "hook": cmd_hook,
+    "tutorial": cmd_tutorial,
     "help": cmd_help,
     "--help": cmd_help,
     "-h": cmd_help,
