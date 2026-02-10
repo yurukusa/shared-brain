@@ -2,9 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
+[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)](https://github.com/yurukusa/shared-brain)
+[![P99 Latency](https://img.shields.io/badge/P99%20latency-93ms-blue.svg)](https://github.com/yurukusa/shared-brain)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yurukusa)
 
 **AI agents that learn from each other's mistakes — and prove it.**
@@ -140,6 +141,21 @@ Ships with 11 lessons covering the most common agent mistakes:
 | `check-rate-limits` | 🟡 Warning | Bulk API requests without rate limiting |
 | `validate-input-boundaries` | 🟡 Warning | Unsanitized external input |
 | `read-error-messages` | ℹ️ Info | Ignoring error messages when debugging |
+
+## Benchmark
+
+100 lessons, 1000 guard checks on a standard machine:
+
+| Metric | Value |
+|--------|-------|
+| Mean latency | 76ms |
+| Median latency | 75ms |
+| P95 latency | 86ms |
+| P99 latency | 93ms |
+| Throughput | 13 ops/sec |
+| Test suite | 130 tests, 0.98s |
+
+Guard checks add negligible overhead to your workflow. Run `brain benchmark` to test on your machine.
 
 ## The Story Behind This
 

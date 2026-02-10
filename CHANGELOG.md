@@ -18,9 +18,21 @@ All notable changes to Shared Brain will be documented in this file.
 - JSONL形式の監査ログ（タイムスタンプ、エージェント名、遵守状況）
 - 非対話モード対応（tty検出、auto-confirm フラグ）
 - BRAIN_HOME / BRAIN_AGENT 環境変数サポート
-- 112個のテストケース（pytest）
+- 130個のテストケース（pytest、セキュリティテスト23件含む）
 - asciinemaデモ録画
 - PyPI公開用 pyproject.toml
+- `brain tutorial` — インタラクティブチュートリアル
+- `brain demo` — サンドボックス付きデモモード
+- `brain benchmark` — パフォーマンスベンチマーク
+- bash/zsh補完スクリプト
+- manページ
+- GitHub Pagesドキュメント
+- ロゴ・バナーSVG
+
+### Security Fixes
+- **ReDoS防止**: 悪意ある正規表現パターンのヒューリスティック検出 + subprocessタイムアウト
+- **Path Traversal防止**: 教訓IDのサニタイズ + resolve検証
+- **Command Injection防止**: `--from-env`フラグでシェル展開を回避
 
 ### Design Decisions
 - **依存関係ゼロ**: 標準ライブラリのみ。PyYAMLがあれば使うが、なくても動く
