@@ -5,6 +5,7 @@
 [![Tests](https://img.shields.io/badge/tests-33%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)](https://github.com/yurukusa/shared-brain)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yurukusa)
 
 **AI agents that learn from each other's mistakes — and prove it.**
 
