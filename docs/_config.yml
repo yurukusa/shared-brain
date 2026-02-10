@@ -1,0 +1,8 @@
+title: Shared Brain
+description: AI agents that learn from each other's mistakes — and prove it.
+theme: jekyll-theme-cayman
+url: https://yurukusa.github.io/shared-brain
+baseurl: /shared-brain
+
+markdown: kramdown
+highlighter: rouge

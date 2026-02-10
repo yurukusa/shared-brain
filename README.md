@@ -148,6 +148,10 @@ The lesson existed in a Markdown file. But the agent never checked it before act
 
 The same AI-automated marketing pipeline that caused these incidents also produced a real result: a game built entirely by a non-engineer with Claude Code sold its first copy — $2, from a buyer in Poland who found the project through GitHub. The marketing worked. The safety didn't. Shared Brain fixes the safety part.
 
+## Documentation
+
+Full documentation: [yurukusa.github.io/shared-brain](https://yurukusa.github.io/shared-brain)
+
 ## License
 
 MIT
