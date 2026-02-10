@@ -1,0 +1,50 @@
+id: cdp-recovery-not-workaround
+severity: high
+created: "2026-02-10"
+violated_count: 1
+last_violated: "2026-02-10"
+
+trigger_patterns:
+  - "cdp_helper\\.ps1"
+  - "cdp_eval_file\\.ps1"
+  - "localhost:922[23]"
+  - "devtools/page/"
+  - "chrome-auto"
+  - "cc-chrome"
+  - "ECONNREFUSED"
+  - "connection refused"
+  - "SingletonLock"
+  - "profile.*lock"
+
+lesson: |
+  When a CDP port (9222/9223) goes down, DO NOT work around it by
+  switching to another port or abandoning browser tasks.
+
+  This lesson exists because of a real incident: chrome-auto(9222)
+  had a profile lock and couldn't start. The agent switched to
+  cc-chrome(9223) for all tasks instead of fixing the issue.
+  Result: All tasks requiring Google OAuth were blocked, and the
+  human had to intervene manually — which defeats the core mission.
+
+  ALWAYS:
+  1. Delete the SingletonLock file and retry
+  2. If that fails, try starting with a fresh profile
+  3. If that still fails, report to Tachikoma immediately
+  4. NEVER silently switch to a different port as a workaround
+  5. NEVER tell the human "please restart manually"
+
+  Recovery is now automated via hooks:
+  - PreToolUse: cdp-safety-check.sh checks port before CDP commands
+  - PostToolUse: cdp-failure-recovery.sh detects failures and recovers
+  - Shared utility: cdp-recover.sh handles the actual recovery flow
+
+checklist:
+  - "Attempted to delete SingletonLock"
+  - "Attempted to restart the Chrome instance"
+  - "Verified CDP port is responding"
+  - "Reported to Tachikoma if recovery failed"
+
+source:
+  incident: "chrome-auto profile lock bypass (2026-02-10)"
+
+tags: [cdp, browser, infrastructure, recovery, chrome]
