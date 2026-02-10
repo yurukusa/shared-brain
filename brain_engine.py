@@ -326,6 +326,8 @@ def cmd_write(args):
         src = Path(args[1])
         if not src.exists():
             print(f"Error: File not found: {src}", file=sys.stderr)
+            print(f"  The YAML file '{src}' does not exist.", file=sys.stderr)
+            print(f"  Create it first, or use 'brain write' to add a lesson interactively.", file=sys.stderr)
             return 1
         lesson = load_yaml(src)
         lid = lesson.get("id", src.stem)
@@ -386,7 +388,9 @@ def cmd_guard(args):
     args = [a for a in args if a != "--auto-confirm"]
 
     if not args:
-        print("Usage: brain guard <command or code snippet>", file=sys.stderr)
+        print("Error: No command specified.", file=sys.stderr)
+        print("  brain guard checks a command against known lessons before execution.", file=sys.stderr)
+        print("  Usage: brain guard \"curl -X PUT https://api.example.com/articles/123\"", file=sys.stderr)
         return 1
 
     command = " ".join(args)
@@ -399,7 +403,9 @@ def cmd_guard(args):
 def cmd_check(args):
     """Search lessons by keyword."""
     if not args:
-        print("Usage: brain check <keyword>", file=sys.stderr)
+        print("Error: No keyword specified.", file=sys.stderr)
+        print("  brain check searches all lessons by keyword.", file=sys.stderr)
+        print("  Usage: brain check \"PUT\" or brain check \"api safety\"", file=sys.stderr)
         return 1
 
     keyword = " ".join(args).lower()
@@ -558,7 +564,9 @@ def cmd_stats(args):
 def cmd_hook(args):
     """Install or uninstall brain guard as a Claude Code hook."""
     if not args or args[0] not in ("install", "uninstall", "status"):
-        print("Usage: brain hook install|uninstall|status", file=sys.stderr)
+        print("Error: Missing or invalid hook subcommand.", file=sys.stderr)
+        print("  brain hook manages the Claude Code PreToolUse integration.", file=sys.stderr)
+        print("  Usage: brain hook install | brain hook uninstall | brain hook status", file=sys.stderr)
         return 1
 
     settings_path = Path.home() / ".claude" / "settings.json"
@@ -649,7 +657,9 @@ def cmd_export(args):
             i += 1
 
     if fmt not in ("md", "json", "markdown"):
-        print(f"Error: Unknown format '{fmt}'. Use 'md' or 'json'.", file=sys.stderr)
+        print(f"Error: Unknown format '{fmt}'.", file=sys.stderr)
+        print(f"  Supported formats: 'md' (Markdown) and 'json'.", file=sys.stderr)
+        print(f"  Usage: brain export --format md --output lessons.md", file=sys.stderr)
         return 1
 
     lessons = load_all_lessons()
@@ -714,7 +724,9 @@ def cmd_benchmark(args):
     """Run performance benchmark."""
     benchmark_script = Path(__file__).parent / "tests" / "benchmark.py"
     if not benchmark_script.exists():
-        print(f"Error: benchmark script not found at {benchmark_script}", file=sys.stderr)
+        print(f"Error: Benchmark script not found.", file=sys.stderr)
+        print(f"  Expected at: {benchmark_script}", file=sys.stderr)
+        print(f"  This file ships with the source repo. Try: git clone && cd shared-brain", file=sys.stderr)
         return 1
     os.execvp(sys.executable, [sys.executable, str(benchmark_script)])
 
@@ -947,8 +959,9 @@ def main():
     if cmd in COMMANDS:
         return COMMANDS[cmd](args)
     else:
-        print(f"Unknown command: {cmd}", file=sys.stderr)
-        print("Run 'brain help' for usage.", file=sys.stderr)
+        print(f"Error: Unknown command '{cmd}'.", file=sys.stderr)
+        print(f"  Available commands: write, guard, check, list, audit, stats, export, hook, tutorial, benchmark", file=sys.stderr)
+        print(f"  Run 'brain help' for detailed usage.", file=sys.stderr)
         return 1
 
 
