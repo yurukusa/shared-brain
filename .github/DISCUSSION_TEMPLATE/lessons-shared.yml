@@ -1,0 +1,58 @@
+title: "[Lesson] "
+labels:
+  - lesson
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share a lesson that saved you (or could have saved you) from a real mistake.
+        The best lessons come from real incidents. Your pain is someone else's prevention.
+
+  - type: textarea
+    id: lesson-yaml
+    attributes:
+      label: The Lesson (YAML)
+      description: |
+        Paste your lesson in Shared Brain YAML format. This makes it easy for others to add it directly to their `.brain/lessons/` directory.
+      placeholder: |
+        ```yaml
+        id: always-backup-before-migration
+        severity: critical
+        text: "Always create a backup before running database migrations"
+        triggers:
+          - "migrate"
+          - "db upgrade"
+        checklist:
+          - "Backup created and verified"
+          - "Rollback plan documented"
+        ```
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: incident
+    attributes:
+      label: What Incident Triggered This Lesson
+      description: |
+        Tell the story. What went wrong (or almost went wrong)?
+        The more specific, the more useful this is for others.
+      placeholder: |
+        I was deploying a schema change and forgot to back up the database first.
+        The migration failed halfway through, leaving the DB in an inconsistent state...
+    validations:
+      required: true
+
+  - type: textarea
+    id: guard-stats
+    attributes:
+      label: How Many Times Has Guard Caught This?
+      description: |
+        If you've been running this lesson with `brain guard`, how often has it fired?
+        This helps the community understand which lessons are most valuable in practice.
+        Run `brain stats` to check your numbers.
+      placeholder: |
+        This lesson has fired 12 times in the past month. 3 of those were legitimate
+        blocks that prevented me from repeating the mistake.
+    validations:
+      required: false

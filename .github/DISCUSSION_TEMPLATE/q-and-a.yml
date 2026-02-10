@@ -1,0 +1,55 @@
+title: "[Q&A] "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask anything about using Shared Brain. The community and maintainers are here to help.
+
+  - type: textarea
+    id: what-you-tried
+    attributes:
+      label: What You Tried
+      description: |
+        What command or workflow did you attempt? Include the exact commands or configuration you used.
+      placeholder: |
+        I ran `brain guard --check "deploying to production"` but...
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What Happened
+      description: |
+        What was the actual result? Paste any error messages or unexpected output.
+      placeholder: |
+        ```
+        Error: ...
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+      placeholder: |
+        I expected the guard to block the action because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Help us understand your setup so we can reproduce the issue.
+      placeholder: |
+        - OS: Ubuntu 22.04 / macOS 14 / Windows 11 WSL2
+        - Python version: 3.12
+        - Shared Brain version: 0.1.0
+        - Agent: Claude Code / Cursor / custom
+    validations:
+      required: true

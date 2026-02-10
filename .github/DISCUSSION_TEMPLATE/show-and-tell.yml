@@ -1,0 +1,48 @@
+title: "[Show & Tell] "
+labels:
+  - show-and-tell
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing how you use Shared Brain! We love seeing real-world setups and workflows.
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your Setup
+      description: |
+        How do you have Shared Brain configured? What agents or tools are you using it with?
+        Feel free to share your `.brain/` structure, integration hooks, or workflow description.
+      placeholder: |
+        I'm using Shared Brain with [agent/tool] and have it integrated into...
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot-output
+    attributes:
+      label: Screenshot or Output
+      description: |
+        Share a screenshot, terminal output, or demo that shows Shared Brain in action.
+        Drag and drop images here, or paste formatted terminal output in a code block.
+      placeholder: |
+        ```
+        $ brain guard --check "about to run rm -rf /"
+        BLOCKED by lesson critical/no-rm-rf:
+          "Never run rm -rf on root. Use targeted paths."
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: surprise
+    attributes:
+      label: What Surprised You
+      description: |
+        Was there anything unexpected? A lesson that caught a mistake you didn't anticipate?
+        A workflow improvement you didn't plan for? Share the "aha" moment.
+      placeholder: |
+        I didn't expect brain guard to catch X, but it saved me from...
+    validations:
+      required: false

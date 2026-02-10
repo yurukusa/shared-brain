@@ -1,0 +1,44 @@
+title: "[Idea] "
+labels:
+  - idea
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for Shared Brain? We'd love to hear it. Feature suggestions, integration ideas, and workflow improvements are all welcome.
+
+  - type: textarea
+    id: problem-need
+    attributes:
+      label: Problem or Need
+      description: |
+        What problem are you trying to solve, or what need does this address?
+        Describe the situation where this feature would help.
+      placeholder: |
+        When working with multiple agents, I often run into the problem of...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        How do you imagine this working? A CLI command, a config option, a new guard behavior?
+        Be as specific or as vague as you like.
+      placeholder: |
+        It would be great if `brain guard` could also...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: |
+        Have you tried any workarounds? Are there other tools that solve this differently?
+        Understanding what you've already considered helps us design the right solution.
+      placeholder: |
+        I tried using X, but it doesn't handle...
+    validations:
+      required: false
