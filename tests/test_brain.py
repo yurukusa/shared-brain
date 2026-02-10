@@ -1827,3 +1827,159 @@ class TestHTMLExport:
         # Should be escaped
         assert "&lt;script&gt;" in captured.out
         assert "&amp;" in captured.out
+
+
+# --- Uninstall Tests ---
+
+class TestUninstall:
+    """Tests for brain uninstall command."""
+
+    def test_uninstall_removes_audit(self, brain_home, capsys, monkeypatch):
+        """Uninstall should remove audit log when confirmed."""
+        # Create audit file
+        audit_file = brain_home / "audit.jsonl"
+        audit_file.write_text('{"test": true}\n')
+        assert audit_file.exists()
+
+        # Simulate 'y' confirmation
+        monkeypatch.setattr("builtins.input", lambda prompt: "y")
+        result = brain_engine.cmd_uninstall([])
+        assert result == 0
+        assert not audit_file.exists()
+
+    def test_uninstall_aborted(self, brain_home, capsys, monkeypatch):
+        """Uninstall should abort when user says no."""
+        audit_file = brain_home / "audit.jsonl"
+        audit_file.write_text('{"test": true}\n')
+
+        monkeypatch.setattr("builtins.input", lambda prompt: "n")
+        # Must pretend we are in a TTY so the interactive confirm path is taken
+        monkeypatch.setattr("sys.stdin", type("FakeTTY", (), {"isatty": lambda self: True})())
+        result = brain_engine.cmd_uninstall([])
+        assert result == 1
+        assert audit_file.exists()
+
+    def test_uninstall_all_removes_lessons(self, brain_home, sample_lesson, capsys, monkeypatch):
+        """--all should also remove lessons and brain directory."""
+        lessons_dir = brain_home / "lessons"
+        assert lessons_dir.exists()
+        assert len(list(lessons_dir.glob("*.yaml"))) > 0
+
+        monkeypatch.setattr("builtins.input", lambda prompt: "y")
+        result = brain_engine.cmd_uninstall(["--all"])
+        assert result == 0
+        assert not lessons_dir.exists()
+
+    def test_uninstall_nothing(self, tmp_path, capsys, monkeypatch):
+        """Uninstall on empty system should report nothing to do."""
+        monkeypatch.setenv("BRAIN_HOME", str(tmp_path / "nonexistent"))
+        _mod = sys.modules["brain_engine"]
+        orig_brain = _mod.BRAIN_DIR
+        orig_lessons = _mod.LESSONS_DIR
+        orig_audit = _mod.AUDIT_FILE
+        orig_plugins = _mod.PLUGINS_DIR
+
+        _mod.BRAIN_DIR = tmp_path / "nonexistent"
+        _mod.LESSONS_DIR = _mod.BRAIN_DIR / "lessons"
+        _mod.AUDIT_FILE = _mod.BRAIN_DIR / "audit.jsonl"
+        _mod.PLUGINS_DIR = _mod.BRAIN_DIR / "plugins"
+
+        try:
+            result = brain_engine.cmd_uninstall([])
+            assert result == 0
+            captured = capsys.readouterr()
+            assert "Nothing" in captured.out or "アンインストール対象" in captured.out
+        finally:
+            _mod.BRAIN_DIR = orig_brain
+            _mod.LESSONS_DIR = orig_lessons
+            _mod.AUDIT_FILE = orig_audit
+            _mod.PLUGINS_DIR = orig_plugins
+
+
+# --- Doctor Tests ---
+
+class TestDoctor:
+    """Tests for brain doctor command."""
+
+    def test_doctor_healthy_system(self, brain_home, sample_lesson, capsys):
+        """Doctor should pass on a healthy setup."""
+        result = brain_engine.cmd_doctor([])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Python:" in captured.out or "Python" in captured.out
+        assert "All checks passed" in captured.out or "全チェックパス" in captured.out
+
+    def test_doctor_shows_lesson_count(self, brain_home, sample_lesson, capsys):
+        """Doctor should report lesson counts."""
+        result = brain_engine.cmd_doctor([])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Lessons:" in captured.out or "レッスン:" in captured.out
+
+    def test_doctor_detects_corrupt_lesson(self, brain_home, capsys):
+        """Doctor should report corrupt lesson files."""
+        # Write an invalid YAML file
+        (brain_home / "lessons" / "broken.yaml").write_text("{{invalid yaml: [")
+        result = brain_engine.cmd_doctor([])
+        captured = capsys.readouterr()
+        assert "issue" in captured.out.lower() or "問題" in captured.out
+
+    def test_doctor_detects_corrupt_audit(self, brain_home, capsys):
+        """Doctor should detect corrupt audit entries."""
+        audit_file = brain_home / "audit.jsonl"
+        audit_file.write_text('{"valid": true}\nnot json\n{"also": "valid"}\n')
+        result = brain_engine.cmd_doctor([])
+        captured = capsys.readouterr()
+        assert "corrupt" in captured.out.lower() or "破損" in captured.out
+
+
+# --- New Command Tests ---
+
+class TestNewCommand:
+    """Tests for brain new (template generator) command."""
+
+    def test_new_generates_yaml_file(self, brain_home, capsys, monkeypatch, tmp_path):
+        """brain new should generate a YAML file in the current directory."""
+        monkeypatch.chdir(tmp_path)
+        inputs = iter(["my-lesson", "warning", "Be careful with X", "pattern1", "", "Check A", "", "api,safety"])
+        monkeypatch.setattr("builtins.input", lambda prompt: next(inputs))
+
+        result = brain_engine.cmd_new([])
+        assert result == 0
+
+        yaml_file = tmp_path / "my-lesson.yaml"
+        assert yaml_file.exists()
+        content = yaml_file.read_text()
+        assert "my-lesson" in content
+        assert "warning" in content
+
+    def test_new_aborts_on_empty_id(self, brain_home, capsys, monkeypatch, tmp_path):
+        """brain new should abort if no ID is provided."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr("builtins.input", lambda prompt: "")
+
+        result = brain_engine.cmd_new([])
+        assert result == 1
+
+    def test_new_rejects_invalid_id(self, brain_home, capsys, monkeypatch, tmp_path):
+        """brain new should reject IDs that sanitize to empty string."""
+        monkeypatch.chdir(tmp_path)
+        # After sanitization: strips /, \, .., and non-word chars -> empty string
+        monkeypatch.setattr("builtins.input", lambda prompt: "///...")
+
+        result = brain_engine.cmd_new([])
+        assert result == 1
+
+    def test_new_template_importable(self, brain_home, capsys, monkeypatch, tmp_path):
+        """Generated template should be importable via brain write -f."""
+        monkeypatch.chdir(tmp_path)
+        inputs = iter(["import-test", "critical", "Test import", "test_pattern", "", "Check 1", "", "test"])
+        monkeypatch.setattr("builtins.input", lambda prompt: next(inputs))
+
+        brain_engine.cmd_new([])
+        yaml_file = tmp_path / "import-test.yaml"
+        assert yaml_file.exists()
+
+        # Now import it
+        result = brain_engine.cmd_write(["-f", str(yaml_file)])
+        assert result == 0

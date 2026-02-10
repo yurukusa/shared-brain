@@ -1463,6 +1463,278 @@ Let's see what was recorded:
     return 0
 
 
+def cmd_uninstall(args):
+    """Safely remove brain guard hook, configuration, and optionally lessons."""
+    import shutil
+
+    remove_all = "--all" in args
+
+    if not BRAIN_DIR.exists() and not remove_all:
+        print(msg("uninstall_nothing"))
+        return 0
+
+    RED = "\033[1;31m"
+    RESET = "\033[0m"
+
+    print(f"\n{RED}\u26a0\ufe0f  {msg('uninstall_warning')}{RESET}")
+
+    # Show what will be removed
+    settings_path = Path.home() / ".claude" / "settings.json"
+    has_hook = False
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+            hooks = settings.get("hooks", {}).get("PreToolUse", [])
+            has_hook = any("brain guard" in json.dumps(h) for h in hooks)
+        except Exception:
+            pass
+
+    if has_hook:
+        print(msg("uninstall_will_remove_hook"))
+
+    if AUDIT_FILE.exists():
+        print(msg("uninstall_will_remove_audit", path=AUDIT_FILE))
+
+    user_lesson_count = 0
+    if LESSONS_DIR.exists():
+        user_lesson_count = len(list(LESSONS_DIR.glob("*.yaml")) + list(LESSONS_DIR.glob("*.yml")))
+    if remove_all and user_lesson_count > 0:
+        print(msg("uninstall_will_remove_lessons", count=user_lesson_count, path=LESSONS_DIR))
+
+    plugin_count = 0
+    if PLUGINS_DIR.exists():
+        plugin_count = len(list(PLUGINS_DIR.glob("*.py")))
+    if remove_all and plugin_count > 0:
+        print(msg("uninstall_will_remove_plugins", count=plugin_count, path=PLUGINS_DIR))
+
+    if remove_all and BRAIN_DIR.exists():
+        print(msg("uninstall_will_remove_brain_dir", path=BRAIN_DIR))
+
+    print()
+
+    if sys.stdin.isatty():
+        try:
+            response = input(msg("uninstall_confirm")).strip().lower()
+            if response not in ("y", "yes"):
+                print(msg("aborted"))
+                return 1
+        except (EOFError, KeyboardInterrupt):
+            print(f"\n{msg('aborted')}")
+            return 1
+    else:
+        print(msg("non_interactive_warning"))
+
+    # Remove hook from Claude Code settings
+    if has_hook:
+        settings = json.loads(settings_path.read_text())
+        hooks = settings.get("hooks", {}).get("PreToolUse", [])
+        settings["hooks"]["PreToolUse"] = [h for h in hooks if "brain guard" not in json.dumps(h)]
+        settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+        print(f"  \u2705 {msg('uninstall_hook_removed')}")
+
+    # Remove audit log
+    if AUDIT_FILE.exists():
+        AUDIT_FILE.unlink()
+        print(f"  \u2705 {msg('uninstall_audit_removed')}")
+
+    if remove_all:
+        # Remove user lessons
+        if user_lesson_count > 0:
+            shutil.rmtree(LESSONS_DIR, ignore_errors=True)
+            print(f"  \u2705 {msg('uninstall_lessons_removed', count=user_lesson_count)}")
+
+        # Remove plugins
+        if plugin_count > 0:
+            shutil.rmtree(PLUGINS_DIR, ignore_errors=True)
+            print(f"  \u2705 {msg('uninstall_plugins_removed', count=plugin_count)}")
+
+        # Remove brain directory
+        if BRAIN_DIR.exists():
+            shutil.rmtree(BRAIN_DIR, ignore_errors=True)
+            print(f"  \u2705 {msg('uninstall_brain_dir_removed')}")
+    else:
+        print(msg("uninstall_keep_lessons_hint"))
+
+    print(f"\n{msg('uninstall_complete')}")
+    return 0
+
+
+def cmd_doctor(args):
+    """Environment diagnostics — check Python, hooks, lessons, permissions."""
+    BOLD = "\033[1m"
+    GREEN = "\033[1;32m"
+    RED = "\033[1;31m"
+    YELLOW = "\033[1;33m"
+    RESET = "\033[0m"
+
+    issues = 0
+
+    print(f"\n\U0001fa7a {BOLD}{msg('doctor_header')}{RESET}")
+    print("=" * 50)
+
+    # Python version
+    print(f"  {GREEN}\u2713{RESET} {msg('doctor_python_version', version=sys.version.split()[0])}")
+
+    # Brain directory
+    if BRAIN_DIR.exists():
+        print(f"  {GREEN}\u2713{RESET} {msg('doctor_brain_dir', path=BRAIN_DIR)}")
+    else:
+        print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_brain_dir_missing', path=BRAIN_DIR)}")
+
+    # Lessons count + integrity
+    user_lessons = 0
+    builtin_count = 0
+    lesson_errors = []
+
+    if LESSONS_DIR.exists():
+        for f in sorted(LESSONS_DIR.glob("*.yaml")) + sorted(LESSONS_DIR.glob("*.yml")):
+            try:
+                load_yaml(f)
+                user_lessons += 1
+            except Exception as e:
+                lesson_errors.append((f.name, str(e)))
+
+    if BUILTIN_LESSONS.exists():
+        for f in sorted(BUILTIN_LESSONS.glob("*.yaml")) + sorted(BUILTIN_LESSONS.glob("*.yml")):
+            try:
+                load_yaml(f)
+                builtin_count += 1
+            except Exception as e:
+                lesson_errors.append((f.name, str(e)))
+
+    total = user_lessons + builtin_count
+    print(f"  {GREEN}\u2713{RESET} {msg('doctor_lessons_count', user=user_lessons, builtin=builtin_count, total=total)}")
+
+    if lesson_errors:
+        issues += len(lesson_errors)
+        print(f"  {RED}\u2717{RESET} {msg('doctor_lessons_errors', count=len(lesson_errors))}")
+        for fname, error in lesson_errors:
+            print(f"  {RED}  {msg('doctor_lessons_error_detail', file=fname, error=error)}{RESET}")
+
+    # Audit log
+    if AUDIT_FILE.exists():
+        try:
+            text = AUDIT_FILE.read_text()
+            lines = [l for l in text.strip().split("\n") if l.strip()] if text.strip() else []
+            ok_count = 0
+            bad_count = 0
+            for line in lines:
+                try:
+                    json.loads(line)
+                    ok_count += 1
+                except json.JSONDecodeError:
+                    bad_count += 1
+            if bad_count == 0:
+                print(f"  {GREEN}\u2713{RESET} {msg('doctor_audit_ok', count=ok_count, path=AUDIT_FILE)}")
+            else:
+                issues += 1
+                print(f"  {YELLOW}\u25b3{RESET} {msg('doctor_audit_corrupt', ok=ok_count, bad=bad_count)}")
+        except Exception:
+            issues += 1
+            print(f"  {RED}\u2717{RESET} Audit log: unreadable")
+    else:
+        print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_audit_missing')}")
+
+    # Hook status
+    settings_path = Path.home() / ".claude" / "settings.json"
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+            hooks = settings.get("hooks", {}).get("PreToolUse", [])
+            installed = any("brain guard" in json.dumps(h) for h in hooks)
+            if installed:
+                print(f"  {GREEN}\u2713{RESET} {msg('doctor_hook_installed')}")
+            else:
+                print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_hook_not_installed')}")
+        except Exception:
+            print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_hook_no_settings')}")
+    else:
+        print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_hook_no_settings')}")
+
+    # Permissions
+    if BRAIN_DIR.exists():
+        if os.access(BRAIN_DIR, os.W_OK):
+            print(f"  {GREEN}\u2713{RESET} {msg('doctor_permissions_ok')}")
+        else:
+            issues += 1
+            print(f"  {RED}\u2717{RESET} {msg('doctor_permissions_bad', path=BRAIN_DIR)}")
+
+    # Plugins
+    if PLUGINS_DIR.exists():
+        plugin_files = list(PLUGINS_DIR.glob("*.py"))
+        if plugin_files:
+            print(f"  {GREEN}\u2713{RESET} {msg('doctor_plugins_count', count=len(plugin_files))}")
+        else:
+            print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_plugins_none')}")
+    else:
+        print(f"  {YELLOW}\u25cb{RESET} {msg('doctor_plugins_none')}")
+
+    # Summary
+    print()
+    if issues == 0:
+        print(f"  {GREEN}\u2705 {msg('doctor_all_ok')}{RESET}")
+    else:
+        print(f"  {RED}\u26a0\ufe0f  {msg('doctor_issues_found', count=issues)}{RESET}")
+
+    return 1 if issues > 0 else 0
+
+
+def cmd_new(args):
+    """Generate a YAML lesson template file in the current directory."""
+    print(f"\U0001f4c4 {msg('new_header')}")
+    print("-" * 40)
+
+    raw_lid = input(msg("new_prompt_id")).strip()
+    if not raw_lid:
+        print(msg("aborted"))
+        return 1
+    try:
+        lid = _sanitize_lesson_id(raw_lid)
+    except ValueError:
+        print(msg("write_error_invalid_id_short", raw_lid=raw_lid))
+        return 1
+
+    severity = input(msg("new_prompt_severity")).strip() or "warning"
+    description = input(msg("new_prompt_description")).strip()
+
+    patterns = []
+    print(msg("new_prompt_trigger_intro"))
+    while True:
+        p = input(msg("new_prompt_trigger")).strip()
+        if not p:
+            break
+        patterns.append(p)
+
+    checklist = []
+    print(msg("new_prompt_checklist_intro"))
+    while True:
+        c = input(msg("new_prompt_checklist")).strip()
+        if not c:
+            break
+        checklist.append(c)
+
+    tags_input = input(msg("new_prompt_tags")).strip()
+    tags = [t.strip() for t in tags_input.split(",") if t.strip()] if tags_input else []
+
+    data = {
+        "id": lid,
+        "severity": severity,
+        "created": datetime.date.today().isoformat(),
+        "violated_count": 0,
+        "trigger_patterns": patterns,
+        "lesson": description,
+        "checklist": checklist,
+        "tags": tags,
+        "source": {"incident": ""},
+    }
+
+    output_path = Path.cwd() / f"{lid}.yaml"
+    dump_yaml(data, output_path)
+    print(f"\n\u2705 {msg('new_saved', path=output_path)}")
+    print(msg("new_hint", path=output_path))
+    return 0
+
+
 def cmd_help(args=None):
     """Show help."""
     print(f"\U0001f9e0 {msg('help_text')}")
@@ -1481,6 +1753,9 @@ COMMANDS = {
     "stats": cmd_stats,
     "export": cmd_export,
     "hook": cmd_hook,
+    "uninstall": cmd_uninstall,
+    "doctor": cmd_doctor,
+    "new": cmd_new,
     "tutorial": cmd_tutorial,
     "demo": cmd_demo,
     "benchmark": cmd_benchmark,

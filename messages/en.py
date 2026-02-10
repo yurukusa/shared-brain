@@ -196,6 +196,9 @@ Usage:
   brain hook install          Auto-install guard as Claude Code hook
   brain hook uninstall        Remove brain guard hook
   brain hook status           Check if hook is installed
+  brain uninstall [--all]     Remove hook and audit (--all: also lessons/plugins)
+  brain doctor                Run environment diagnostics
+  brain new                   Generate a YAML lesson template in current directory
   brain tutorial              Interactive walkthrough for new users
 
 Environment:
@@ -211,10 +214,70 @@ Examples:
 """,
 
     # =========================================================================
+    # brain uninstall
+    # =========================================================================
+
+    "uninstall_warning": "This will remove Shared Brain data from your system.",
+    "uninstall_will_remove_hook": "  - Claude Code brain guard hook",
+    "uninstall_will_remove_audit": "  - Audit log ({path})",
+    "uninstall_will_remove_lessons": "  - User lessons ({count} files in {path})",
+    "uninstall_will_remove_plugins": "  - Plugins ({count} files in {path})",
+    "uninstall_will_remove_brain_dir": "  - Brain directory ({path})",
+    "uninstall_confirm": "Are you sure? [y/N] ",
+    "uninstall_hook_removed": "Removed Claude Code brain guard hook",
+    "uninstall_audit_removed": "Removed audit log",
+    "uninstall_lessons_removed": "Removed {count} user lesson(s)",
+    "uninstall_plugins_removed": "Removed {count} plugin(s)",
+    "uninstall_brain_dir_removed": "Removed brain directory",
+    "uninstall_complete": "Uninstall complete. Built-in lessons remain in the source repo.",
+    "uninstall_nothing": "Nothing to uninstall (no brain directory found).",
+    "uninstall_keep_lessons_hint": "  Tip: Use --all to also remove user lessons and plugins.",
+
+    # =========================================================================
+    # brain doctor
+    # =========================================================================
+
+    "doctor_header": "Brain Doctor - Environment Check",
+    "doctor_python_version": "Python: {version}",
+    "doctor_brain_dir": "Brain dir: {path}",
+    "doctor_brain_dir_missing": "Brain dir: {path} (not found - will be created on first use)",
+    "doctor_lessons_count": "Lessons: {user} user + {builtin} built-in = {total} total",
+    "doctor_lessons_errors": "Lesson errors: {count} file(s) failed to load",
+    "doctor_lessons_error_detail": "  - {file}: {error}",
+    "doctor_audit_ok": "Audit log: {count} entries ({path})",
+    "doctor_audit_missing": "Audit log: not yet created",
+    "doctor_audit_corrupt": "Audit log: {ok} OK, {bad} corrupt entries",
+    "doctor_hook_installed": "Claude Code hook: installed",
+    "doctor_hook_not_installed": "Claude Code hook: not installed",
+    "doctor_hook_no_settings": "Claude Code hook: no settings.json found",
+    "doctor_permissions_ok": "Permissions: OK (brain dir writable)",
+    "doctor_permissions_bad": "Permissions: WARNING - {path} is not writable",
+    "doctor_plugins_count": "Plugins: {count} loaded",
+    "doctor_plugins_none": "Plugins: none",
+    "doctor_all_ok": "All checks passed!",
+    "doctor_issues_found": "{count} issue(s) found.",
+
+    # =========================================================================
+    # brain new
+    # =========================================================================
+
+    "new_header": "Generate Lesson Template",
+    "new_prompt_id": "Lesson ID (short, kebab-case): ",
+    "new_prompt_severity": "Severity (critical/warning/info) [warning]: ",
+    "new_prompt_description": "Short description (what should agents know?): ",
+    "new_prompt_trigger_intro": "Trigger patterns (regex, empty line to finish):",
+    "new_prompt_trigger": "  pattern> ",
+    "new_prompt_checklist_intro": "Checklist items (empty line to finish):",
+    "new_prompt_checklist": "  check> ",
+    "new_prompt_tags": "Tags (comma-separated, e.g. api,safety): ",
+    "new_saved": "Template saved to {path}",
+    "new_hint": "  Import it with: brain write -f {path}",
+
+    # =========================================================================
     # main
     # =========================================================================
 
     "main_error_unknown_command": "Error: Unknown command '{cmd}'.",
-    "main_error_available_commands": "  Available commands: write, guard, check, search, list, audit, stats, export, hook, tutorial, benchmark",
+    "main_error_available_commands": "  Available commands: write, guard, check, search, list, audit, stats, export, hook, uninstall, doctor, new, tutorial, benchmark",
     "main_error_help_hint": "  Run 'brain help' for detailed usage.",
 }

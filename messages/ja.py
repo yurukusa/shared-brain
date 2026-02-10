@@ -196,6 +196,9 @@ MESSAGES = {
   brain hook install          ガードを Claude Code フックに自動インストール
   brain hook uninstall        brain guard フックを削除
   brain hook status           フックがインストール済みか確認
+  brain uninstall [--all]     フックと監査ログを削除 (--all: レッスン・プラグインも)
+  brain doctor                環境診断を実行
+  brain new                   現在のディレクトリにYAMLレッスンテンプレートを生成
   brain tutorial              新規ユーザー向けインタラクティブガイド
 
 環境変数:
@@ -211,10 +214,70 @@ MESSAGES = {
 """,
 
     # =========================================================================
+    # brain uninstall
+    # =========================================================================
+
+    "uninstall_warning": "Shared Brainのデータをシステムから削除します。",
+    "uninstall_will_remove_hook": "  - Claude Code brain guardフック",
+    "uninstall_will_remove_audit": "  - 監査ログ ({path})",
+    "uninstall_will_remove_lessons": "  - ユーザーレッスン ({path} 内の {count} ファイル)",
+    "uninstall_will_remove_plugins": "  - プラグイン ({path} 内の {count} ファイル)",
+    "uninstall_will_remove_brain_dir": "  - Brainディレクトリ ({path})",
+    "uninstall_confirm": "本当に削除しますか？ [y/N] ",
+    "uninstall_hook_removed": "Claude Code brain guardフックを削除しました",
+    "uninstall_audit_removed": "監査ログを削除しました",
+    "uninstall_lessons_removed": "ユーザーレッスン {count} 件を削除しました",
+    "uninstall_plugins_removed": "プラグイン {count} 件を削除しました",
+    "uninstall_brain_dir_removed": "Brainディレクトリを削除しました",
+    "uninstall_complete": "アンインストール完了。ビルトインレッスンはソースリポジトリに残ります。",
+    "uninstall_nothing": "アンインストール対象がありません（Brainディレクトリが見つかりません）。",
+    "uninstall_keep_lessons_hint": "  ヒント: --all を使うとユーザーレッスンとプラグインも削除します。",
+
+    # =========================================================================
+    # brain doctor
+    # =========================================================================
+
+    "doctor_header": "Brain Doctor - 環境チェック",
+    "doctor_python_version": "Python: {version}",
+    "doctor_brain_dir": "Brainディレクトリ: {path}",
+    "doctor_brain_dir_missing": "Brainディレクトリ: {path} (未作成 - 初回使用時に作成されます)",
+    "doctor_lessons_count": "レッスン: ユーザー {user} + ビルトイン {builtin} = 合計 {total}",
+    "doctor_lessons_errors": "レッスンエラー: {count} ファイルの読み込みに失敗",
+    "doctor_lessons_error_detail": "  - {file}: {error}",
+    "doctor_audit_ok": "監査ログ: {count} エントリ ({path})",
+    "doctor_audit_missing": "監査ログ: 未作成",
+    "doctor_audit_corrupt": "監査ログ: {ok} 正常, {bad} 破損エントリ",
+    "doctor_hook_installed": "Claude Codeフック: インストール済み",
+    "doctor_hook_not_installed": "Claude Codeフック: 未インストール",
+    "doctor_hook_no_settings": "Claude Codeフック: settings.jsonが見つかりません",
+    "doctor_permissions_ok": "権限: OK（Brainディレクトリ書き込み可能）",
+    "doctor_permissions_bad": "権限: 警告 - {path} に書き込みできません",
+    "doctor_plugins_count": "プラグイン: {count} 件読み込み済み",
+    "doctor_plugins_none": "プラグイン: なし",
+    "doctor_all_ok": "全チェックパス！",
+    "doctor_issues_found": "{count} 件の問題が見つかりました。",
+
+    # =========================================================================
+    # brain new
+    # =========================================================================
+
+    "new_header": "レッスンテンプレート生成",
+    "new_prompt_id": "レッスンID (短い、ケバブケース): ",
+    "new_prompt_severity": "重要度 (critical/warning/info) [warning]: ",
+    "new_prompt_description": "説明 (エージェントに何を教えたいか？): ",
+    "new_prompt_trigger_intro": "トリガーパターン (正規表現、空行で終了):",
+    "new_prompt_trigger": "  パターン> ",
+    "new_prompt_checklist_intro": "チェックリスト項目 (空行で終了):",
+    "new_prompt_checklist": "  チェック> ",
+    "new_prompt_tags": "タグ (カンマ区切り、例: api,safety): ",
+    "new_saved": "テンプレートを {path} に保存しました",
+    "new_hint": "  インポート: brain write -f {path}",
+
+    # =========================================================================
     # main
     # =========================================================================
 
     "main_error_unknown_command": "エラー: 不明なコマンド '{cmd}'。",
-    "main_error_available_commands": "  利用可能なコマンド: write, guard, check, search, list, audit, stats, export, hook, tutorial, benchmark",
+    "main_error_available_commands": "  利用可能なコマンド: write, guard, check, search, list, audit, stats, export, hook, uninstall, doctor, new, tutorial, benchmark",
     "main_error_help_hint": "  詳細は 'brain help' を実行してください。",
 }
