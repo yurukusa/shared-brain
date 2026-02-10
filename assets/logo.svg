@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#1e1b4b" />
+  <circle cx="256" cy="256" r="230" fill="none" stroke="#4338ca" stroke-width="2" opacity="0.5" />
+
+  <!-- Gear (behind brain, bottom-right) -->
+  <g transform="translate(320, 320) scale(0.9)">
+    <!-- Gear teeth -->
+    <path d="M0,-70 L10,-68 L14,-55 L22,-55 L26,-68 L36,-66 L34,-52 L42,-48 L48,-58 L56,-52 L50,-40 L56,-34 L66,-38 L68,-26 L55,-22 L55,-14 L68,-10 L66,0 L52,-4 L48,4 L58,12 L52,22 L40,16 L34,22 L38,34 L26,36 L22,22 L14,22 L10,36 L0,34 L4,20 L-4,16 L-12,26 L-22,20 L-16,8 L-22,2 L-34,6 L-36,-6 L-22,-10 L-22,-18 L-34,-22 L-26,-32 L-16,-24 L-8,-28 L-10,-42 L0,-38 L4,-24 L-4,-24 Z"
+          fill="url(#gearGrad)" opacity="0.85" />
+    <!-- Gear center hole -->
+    <circle cx="0" cy="0" r="18" fill="#1e1b4b" />
+    <circle cx="0" cy="0" r="12" fill="url(#gearGrad)" opacity="0.4" />
+  </g>
+
+  <!-- Brain -->
+  <g transform="translate(230, 220)">
+    <!-- Left hemisphere -->
+    <path d="M50,10 C20,10 -10,30 -15,65 C-20,100 5,130 25,145 C35,153 40,165 40,175 L60,175 C60,165 55,150 45,140 C30,125 15,100 20,70 C25,45 45,35 55,35"
+          fill="url(#brainGrad)" opacity="0.9" />
+    <!-- Right hemisphere -->
+    <path d="M55,10 C85,10 115,30 120,65 C125,100 100,130 80,145 C70,153 65,165 65,175 L45,175 C45,165 50,150 60,140 C75,125 90,100 85,70 C80,45 60,35 50,35"
+          fill="url(#brainGrad)" opacity="0.9" />
+    <!-- Brain folds (sulci) -->
+    <path d="M35,50 Q50,45 65,55" fill="none" stroke="#c4b5fd" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M25,75 Q50,65 80,78" fill="none" stroke="#c4b5fd" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M20,100 Q50,90 85,102" fill="none" stroke="#c4b5fd" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M30,125 Q50,115 75,127" fill="none" stroke="#c4b5fd" stroke-width="2.5" stroke-linecap="round" />
+    <!-- Center line -->
+    <line x1="52" y1="15" x2="52" y2="170" stroke="#c4b5fd" stroke-width="2" opacity="0.6" />
+
+    <!-- Neural connection dots -->
+    <circle cx="35" cy="60" r="3" fill="#fbbf24" opacity="0.9" />
+    <circle cx="70" cy="45" r="3" fill="#fbbf24" opacity="0.9" />
+    <circle cx="25" cy="90" r="3" fill="#fbbf24" opacity="0.9" />
+    <circle cx="80" cy="85" r="3" fill="#fbbf24" opacity="0.9" />
+    <circle cx="40" cy="120" r="3" fill="#fbbf24" opacity="0.9" />
+    <circle cx="65" cy="110" r="3" fill="#fbbf24" opacity="0.9" />
+
+    <!-- Neural connections (lines between dots) -->
+    <line x1="35" y1="60" x2="70" y2="45" stroke="#fbbf24" stroke-width="1" opacity="0.5" />
+    <line x1="25" y1="90" x2="80" y2="85" stroke="#fbbf24" stroke-width="1" opacity="0.5" />
+    <line x1="40" y1="120" x2="65" y2="110" stroke="#fbbf24" stroke-width="1" opacity="0.5" />
+    <line x1="70" y1="45" x2="80" y2="85" stroke="#fbbf24" stroke-width="1" opacity="0.4" />
+    <line x1="35" y1="60" x2="25" y2="90" stroke="#fbbf24" stroke-width="1" opacity="0.4" />
+  </g>
+
+  <!-- "Shared Brain" text -->
+  <text x="256" y="460" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="32" font-weight="700" fill="#e0e7ff" letter-spacing="3">SHARED BRAIN</text>
+</svg>
