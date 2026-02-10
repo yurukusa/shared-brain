@@ -1627,3 +1627,203 @@ class TestStatsVerbose:
         assert result == 0
         captured = capsys.readouterr()
         assert "Severity Breakdown" in captured.out
+
+
+# --- i18n Tests ---
+
+class TestI18n:
+    """Tests for internationalization (i18n) system."""
+
+    def test_i18n_english_default(self, brain_home, sample_lesson, capsys, monkeypatch):
+        """Default language should be English."""
+        monkeypatch.delenv("BRAIN_LANG", raising=False)
+        monkeypatch.delenv("LC_ALL", raising=False)
+        monkeypatch.delenv("LC_MESSAGES", raising=False)
+        monkeypatch.setenv("LANG", "en_US.UTF-8")
+        # Reset i18n state
+        import brain_i18n
+        brain_i18n._current_lang = None
+        brain_i18n._messages = {}
+        brain_i18n._fallback = {}
+        brain_engine._msg_func = None
+
+        result = brain_engine.cmd_stats([])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Shared Brain Stats" in captured.out
+        assert "Lessons:" in captured.out
+
+    def test_i18n_japanese_with_brain_lang(self, brain_home, sample_lesson, capsys, monkeypatch):
+        """BRAIN_LANG=ja should switch output to Japanese."""
+        monkeypatch.setenv("BRAIN_LANG", "ja")
+        import brain_i18n
+        brain_i18n._current_lang = None
+        brain_i18n._messages = {}
+        brain_i18n._fallback = {}
+        brain_engine._msg_func = None
+
+        result = brain_engine.cmd_stats([])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Shared Brain 統計" in captured.out
+        assert "レッスン数:" in captured.out
+
+    def test_i18n_japanese_with_lang_env(self, brain_home, sample_lesson, capsys, monkeypatch):
+        """LANG=ja_JP.UTF-8 should detect Japanese."""
+        monkeypatch.delenv("BRAIN_LANG", raising=False)
+        monkeypatch.delenv("LC_ALL", raising=False)
+        monkeypatch.delenv("LC_MESSAGES", raising=False)
+        monkeypatch.setenv("LANG", "ja_JP.UTF-8")
+        import brain_i18n
+        brain_i18n._current_lang = None
+        brain_i18n._messages = {}
+        brain_i18n._fallback = {}
+        brain_engine._msg_func = None
+
+        result = brain_engine.cmd_stats([])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Shared Brain 統計" in captured.out
+
+    def test_i18n_message_keys_match(self):
+        """Japanese catalog must have the same keys as English."""
+        from messages import en, ja
+        en_keys = set(en.MESSAGES.keys())
+        ja_keys = set(ja.MESSAGES.keys())
+        missing = en_keys - ja_keys
+        extra = ja_keys - en_keys
+        assert not missing, f"Missing in ja: {missing}"
+        assert not extra, f"Extra in ja: {extra}"
+
+
+# --- Plugin System Tests ---
+
+class TestPluginSystem:
+    """Tests for the plugin loading and registry system."""
+
+    def test_plugin_guard_registration(self, brain_home, capsys):
+        """Plugins can register custom guard rules."""
+        # Reset registry
+        brain_engine.REGISTRY.guards.clear()
+        brain_engine.REGISTRY._loaded = False
+
+        # Register a custom guard directly
+        def match_fn(command):
+            return "dangerous" in command
+
+        brain_engine.REGISTRY.register_guard("test-guard", match_fn)
+        assert len(brain_engine.REGISTRY.guards) == 1
+        assert brain_engine.REGISTRY.guards[0]["name"] == "test-guard"
+
+        # Clean up
+        brain_engine.REGISTRY.guards.clear()
+
+    def test_plugin_exporter_registration(self, brain_home, sample_lesson, capsys, tmp_path):
+        """Plugins can register custom export formats."""
+        brain_engine.REGISTRY._loaded = True  # Prevent file loading
+
+        def export_csv(lessons, output_path=None):
+            lines = ["id,severity"]
+            for l in lessons:
+                lines.append(f"{l.get('id','')},{l.get('severity','')}")
+            content = "\n".join(lines)
+            if output_path:
+                Path(output_path).write_text(content)
+            return content
+
+        brain_engine.REGISTRY.register_exporter("csv", export_csv)
+
+        result = brain_engine.cmd_export(["--format", "csv"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "test-put-safety" in captured.out
+        assert "critical" in captured.out
+
+        # Clean up
+        del brain_engine.REGISTRY.exporters["csv"]
+
+    def test_plugin_source_registration(self, brain_home, capsys):
+        """Plugins can register custom lesson sources."""
+        brain_engine.REGISTRY._loaded = True
+
+        def load_extra():
+            return [{"id": "plugin-lesson-1", "severity": "info", "lesson": "From plugin"}]
+
+        brain_engine.REGISTRY.register_source("test-source", load_extra)
+
+        lessons = brain_engine.load_all_lessons()
+        ids = [l.get("id") for l in lessons]
+        assert "plugin-lesson-1" in ids
+
+        # Clean up
+        brain_engine.REGISTRY.sources.clear()
+
+    def test_plugin_file_loading(self, brain_home, tmp_path):
+        """Plugins from ~/.brain/plugins/ should be loaded."""
+        plugins_dir = brain_home / "plugins"
+        plugins_dir.mkdir(exist_ok=True)
+
+        plugin_code = '''
+def register(registry):
+    registry.register_exporter("test-fmt", lambda lessons, path: "test-output")
+'''
+        (plugins_dir / "test_plugin.py").write_text(plugin_code)
+
+        # Reset and point PLUGINS_DIR to our test dir
+        original_plugins = brain_engine.PLUGINS_DIR
+        brain_engine.PLUGINS_DIR = plugins_dir
+        brain_engine.REGISTRY._loaded = False
+        brain_engine.REGISTRY.exporters.pop("test-fmt", None)
+
+        try:
+            brain_engine.load_plugins()
+            assert "test-fmt" in brain_engine.REGISTRY.exporters
+        finally:
+            brain_engine.PLUGINS_DIR = original_plugins
+            brain_engine.REGISTRY.exporters.pop("test-fmt", None)
+            brain_engine.REGISTRY._loaded = False
+
+
+# --- HTML Export Tests ---
+
+class TestHTMLExport:
+    """Tests for brain export --format html."""
+
+    def test_html_export_basic(self, brain_home, sample_lesson, capsys):
+        """HTML export should produce valid HTML with lesson content."""
+        result = brain_engine.cmd_export(["--format", "html"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "<!DOCTYPE html>" in captured.out
+        assert "test-put-safety" in captured.out
+        assert "CRITICAL" in captured.out
+
+    def test_html_export_inline_css(self, brain_home, sample_lesson, capsys):
+        """HTML export should include inline CSS (no external stylesheets)."""
+        result = brain_engine.cmd_export(["--format", "html"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "<style>" in captured.out
+        assert "font-family" in captured.out
+        # No external CSS links
+        assert '<link rel="stylesheet"' not in captured.out
+
+    def test_html_export_to_file(self, brain_home, sample_lesson, tmp_path, capsys):
+        """HTML export to file should create a valid HTML file."""
+        out_file = str(tmp_path / "export.html")
+        result = brain_engine.cmd_export(["--format", "html", "--output", out_file])
+        assert result == 0
+        content = Path(out_file).read_text()
+        assert "<!DOCTYPE html>" in content
+        assert "test-put-safety" in content
+
+    def test_html_export_escapes_special_chars(self, brain_home, capsys):
+        """HTML export should escape < > & in lesson content."""
+        lesson = 'id: html-escape\nseverity: info\nlesson: "Use <script> & &amp; carefully"\ntrigger_patterns:\n  - "script"\n'
+        (brain_home / "lessons" / "html-escape.yaml").write_text(lesson)
+        result = brain_engine.cmd_export(["--format", "html"])
+        assert result == 0
+        captured = capsys.readouterr()
+        # Should be escaped
+        assert "&lt;script&gt;" in captured.out
+        assert "&amp;" in captured.out

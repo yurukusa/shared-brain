@@ -1,0 +1,21 @@
+# Shared Brain pre-commit hook
+# Runs `brain audit` before each commit to ensure compliance is tracked.
+#
+# Install:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Or manually add to .git/hooks/pre-commit:
+#   #!/bin/sh
+#   brain audit --json > /dev/null 2>&1
+
+repos:
+  - repo: local
+    hooks:
+      - id: brain-audit
+        name: Shared Brain Audit Check
+        entry: python3 -c "import brain_engine; brain_engine.cmd_audit([])"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
