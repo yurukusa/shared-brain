@@ -155,3 +155,70 @@ MIT
 ---
 
 *Built with Claude Code. The same tool that caused the incidents this tool prevents.*
+
+---
+
+## 🇯🇵 日本語ドキュメント
+
+### Shared Brain とは？
+
+AIエージェントが**失敗から学び、その教訓を共有し、本当に守ったかを証明する**CLIツールです。
+
+### 背景
+
+あるAIエージェントがZennの記事をPUT APIで上書きし、5本の記事を消失させました。「PUTの前に必ずGETする」という教訓をドキュメントに書きましたが、翌日**同じエージェントが同じミスを繰り返しました**。教訓は存在していた——でも誰もチェックしなかった。
+
+**教訓を書くだけでは意味がない。読んだか・守ったかを追跡しなければ。**
+
+### 主な機能
+
+| コマンド | 説明 |
+|---------|------|
+| `brain list` | 全教訓を一覧表示 |
+| `brain guard <cmd>` | コマンド実行前に関連する教訓をチェック |
+| `brain check <keyword>` | キーワードで教訓を検索 |
+| `brain write` | 新しい教訓を対話形式で追加 |
+| `brain audit` | コンプライアンスレポートを表示 |
+| `brain stats` | 統計サマリーを表示 |
+| `brain hook install` | Claude Codeのhookとして自動インストール |
+
+### クイックスタート
+
+```bash
+# インストール
+git clone https://github.com/yurukusa/shared-brain.git
+cd shared-brain
+mkdir -p ~/bin && export PATH=~/bin:$PATH
+ln -s $(pwd)/brain ~/bin/brain
+
+# 教訓を確認
+brain list
+
+# コマンド実行前にガードチェック
+brain guard "curl -X PUT https://api.example.com/articles/123"
+# ⚠️  重大な教訓: api-put-safety
+#    「PUTはリソース全体を置換する。必ず先にGETすること。」
+#    実行しますか？ [y/N]
+
+# 自分の教訓を追加
+brain write
+
+# 監査レポート
+brain audit
+```
+
+### 仕組み
+
+1. **教訓（Lessons）** — YAMLファイルとして `~/.brain/lessons/` に保存。トリガーパターン、重要度、チェックリストを含む
+2. **ガード（Guard）** — `brain guard` を実行すると、コマンドを全教訓のトリガーパターンと照合。一致すれば教訓を表示し確認を求める
+3. **監査証跡（Audit）** — 全てのガードチェックを `~/.brain/audit.jsonl` に記録。「読んだか・守ったか」をデータで証明
+
+### 同梱教訓（11個）
+
+GETなしPUT、force push、本番DB直接操作、シークレットのコミット、バックアップなし削除など、AIエージェントがよく犯すミスをカバーする11個の教訓が付属しています。
+
+### ライセンス
+
+MIT
+
+*このツールはClaude Codeで構築されました。このツールが防ぐインシデントを起こした、まさにそのツールで。*
