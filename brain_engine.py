@@ -636,12 +636,15 @@ def cmd_audit(args):
 
 
 def cmd_stats(args):
-    """Quick stats summary."""
+    """Quick stats summary. Use --verbose for detailed breakdown."""
+    verbose = "--verbose" in args or "-v" in args
     lessons = load_all_lessons()
     entries = load_audit()
 
     total_lessons = len(lessons)
     critical = sum(1 for l in lessons if l.get("severity") == "critical")
+    warning = sum(1 for l in lessons if l.get("severity") == "warning")
+    info = total_lessons - critical - warning
     total_violations = sum(l.get("violated_count", 0) for l in lessons)
 
     guard_triggers = sum(1 for e in entries if e.get("note") in ("guard_triggered", "user_confirmed", "user_aborted"))
@@ -659,6 +662,55 @@ def cmd_stats(args):
     if guard_triggers > 0:
         prevention_rate = (user_aborted / guard_triggers) * 100
         print(f"Prevention:    {prevention_rate:.0f}% (mistakes caught)")
+
+    if not verbose:
+        return 0
+
+    # --- Verbose output ---
+    BOLD = "\033[1m"
+    CYAN = "\033[1;36m"
+    RESET = "\033[0m"
+
+    # Severity breakdown
+    print(f"\n{BOLD}Severity Breakdown:{RESET}")
+    print(f"  🔴 Critical: {critical}")
+    print(f"  🟡 Warning:  {warning}")
+    print(f"  🔵 Info:     {info}")
+
+    # Category breakdown (by tags)
+    tag_counts = {}
+    for lesson in lessons:
+        tags = lesson.get("tags", [])
+        if isinstance(tags, str):
+            tags = [tags]
+        for tag in tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    if tag_counts:
+        print(f"\n{BOLD}Categories (by tags):{RESET}")
+        for tag, count in sorted(tag_counts.items(), key=lambda x: -x[1]):
+            print(f"  {tag}: {count}")
+
+    # Top 5 most triggered lessons
+    lesson_fire_counts = {}
+    for entry in entries:
+        for lid in entry.get("lessons_matched", []):
+            lesson_fire_counts[lid] = lesson_fire_counts.get(lid, 0) + 1
+    if lesson_fire_counts:
+        print(f"\n{BOLD}Top 5 Guard Triggers:{RESET}")
+        top5 = sorted(lesson_fire_counts.items(), key=lambda x: -x[1])[:5]
+        for lid, count in top5:
+            print(f"  {count:3d}x  {lid}")
+
+    # Recently added lessons (by created date, newest first)
+    dated = [(l, l.get("created", "")) for l in lessons if l.get("created")]
+    dated.sort(key=lambda x: x[1], reverse=True)
+    if dated:
+        print(f"\n{BOLD}Recently Added (last 5):{RESET}")
+        for lesson, created in dated[:5]:
+            lid = lesson.get("id", "unknown")
+            severity = lesson.get("severity", "info").upper()
+            icon = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "🔵"
+            print(f"  {icon} {created}  {lid}")
 
     return 0
 
@@ -819,6 +871,108 @@ def cmd_export(args):
         print(f"✅ Exported {len(lessons)} lessons to {output_file}")
     else:
         print(content)
+
+    return 0
+
+
+def cmd_search(args):
+    """Full-text search across lessons with highlighting and detail."""
+    if not args:
+        print("Error: No search term specified.", file=sys.stderr)
+        print("  brain search finds lessons matching keywords.", file=sys.stderr)
+        print('  Usage: brain search "CDP"', file=sys.stderr)
+        print('         brain search --tag api', file=sys.stderr)
+        print('         brain search --severity critical "PUT"', file=sys.stderr)
+        return 1
+
+    # Parse flags
+    tag_filter = None
+    severity_filter = None
+    keywords = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--tag" and i + 1 < len(args):
+            tag_filter = args[i + 1].lower()
+            i += 2
+        elif args[i] == "--severity" and i + 1 < len(args):
+            severity_filter = args[i + 1].lower()
+            i += 2
+        else:
+            keywords.append(args[i])
+            i += 1
+
+    query = " ".join(keywords).lower() if keywords else ""
+    lessons = load_all_lessons()
+    results = []
+
+    for lesson in lessons:
+        # Tag filter
+        if tag_filter:
+            tags = lesson.get("tags", [])
+            if isinstance(tags, str):
+                tags = [tags]
+            if not any(tag_filter in t.lower() for t in tags):
+                continue
+
+        # Severity filter
+        if severity_filter:
+            if lesson.get("severity", "info").lower() != severity_filter:
+                continue
+
+        # Keyword matching — search across all text fields
+        if query:
+            match_fields = []
+            for field in ("id", "lesson", "tags", "trigger_patterns", "checklist"):
+                val = lesson.get(field, "")
+                text = json.dumps(val, ensure_ascii=False, default=str).lower() if not isinstance(val, str) else val.lower()
+                if query in text:
+                    match_fields.append(field)
+            if not match_fields:
+                continue
+            results.append((lesson, match_fields))
+        else:
+            results.append((lesson, []))
+
+    if not results:
+        print(f"No lessons found for '{query or tag_filter or severity_filter}'")
+        return 0
+
+    # ANSI colors
+    BOLD = "\033[1m"
+    CYAN = "\033[1;36m"
+    YELLOW = "\033[1;33m"
+    RESET = "\033[0m"
+
+    print(f"🔍 {len(results)} result(s):\n")
+    for lesson, match_fields in results:
+        severity = lesson.get("severity", "info").upper()
+        lid = lesson.get("id", "unknown")
+        icon = "🔴" if severity == "CRITICAL" else "🟡" if severity == "WARNING" else "🔵"
+
+        print(f"  {icon} {BOLD}{lid}{RESET}  [{severity}]")
+
+        # Lesson text (first 2 lines)
+        text = lesson.get("lesson", "")
+        if text:
+            for line in text.strip().split("\n")[:2]:
+                print(f"     {line[:100]}")
+
+        # Tags
+        tags = lesson.get("tags", [])
+        if tags:
+            tag_list = tags if isinstance(tags, list) else [tags]
+            print(f"     {CYAN}Tags:{RESET} {', '.join(tag_list)}")
+
+        # Triggers
+        patterns = lesson.get("trigger_patterns", [])
+        if patterns:
+            print(f"     {CYAN}Triggers:{RESET} {', '.join(patterns[:3])}")
+
+        # Where the match was found
+        if match_fields:
+            print(f"     {YELLOW}Matched in:{RESET} {', '.join(match_fields)}")
+
+        print()
 
     return 0
 
@@ -1166,9 +1320,13 @@ Usage:
   brain write -f <file.yaml>  Add a lesson from a YAML file
   brain guard <command>       Check command against known lessons
   brain check <keyword>       Search lessons by keyword
+  brain search <term>         Full-text search with highlighting
+  brain search --tag <tag>    Filter lessons by tag
+  brain search --severity <s> Filter by severity level
   brain list                  List all lessons
   brain audit [--json]        Show compliance report
   brain stats                 Quick stats summary
+  brain stats --verbose       Detailed breakdown with categories & top triggers
   brain export [--format md|json] [--output file]
                               Export lessons for other projects
   brain hook install          Auto-install guard as Claude Code hook
@@ -1195,6 +1353,7 @@ COMMANDS = {
     "write": cmd_write,
     "guard": cmd_guard,
     "check": cmd_check,
+    "search": cmd_search,
     "list": cmd_list,
     "audit": cmd_audit,
     "stats": cmd_stats,
@@ -1223,7 +1382,7 @@ def main():
         return COMMANDS[cmd](args)
     else:
         print(f"Error: Unknown command '{cmd}'.", file=sys.stderr)
-        print(f"  Available commands: write, guard, check, list, audit, stats, export, hook, tutorial, benchmark", file=sys.stderr)
+        print(f"  Available commands: write, guard, check, search, list, audit, stats, export, hook, tutorial, benchmark", file=sys.stderr)
         print(f"  Run 'brain help' for detailed usage.", file=sys.stderr)
         return 1
 

@@ -1447,3 +1447,183 @@ class TestSecurityFixes:
         captured = capsys.readouterr()
         assert "全角テスト教訓" in captured.out
         assert "テストエージェント" in captured.out
+
+
+class TestErrorHandlingIntegration:
+    """Error handling integration tests — broken YAML, large files, permission errors."""
+
+    def test_broken_yaml_file_skipped_gracefully(self, brain_home, capsys):
+        """Malformed YAML should be skipped with a warning, not crash."""
+        # Valid lesson
+        (brain_home / "lessons" / "good.yaml").write_text(
+            "id: good-lesson\nseverity: info\nlesson: valid\n"
+        )
+        # Broken YAML (unclosed bracket, bad indentation)
+        (brain_home / "lessons" / "broken.yaml").write_text(
+            "id: broken\nseverity: [unclosed\n  bad indent:\n    :::\n"
+        )
+        lessons = brain_engine.load_all_lessons()
+        # Good lesson should still load
+        good = [l for l in lessons if l.get("id") == "good-lesson"]
+        assert len(good) == 1
+        # Guard should not crash even with broken lesson in directory
+        result = brain_engine.guard("anything", "test", auto_confirm=True)
+        assert isinstance(result, bool)
+
+    def test_oversized_yaml_file_handled(self, brain_home, capsys):
+        """A huge YAML file (>1MB) should load without crashing or hanging."""
+        # Generate a 1.5MB lesson file with a very long lesson text
+        big_text = "x" * (1024 * 1500)  # 1.5MB of 'x'
+        content = f"id: big-lesson\nseverity: info\nlesson: {big_text}\n"
+        (brain_home / "lessons" / "big.yaml").write_text(content)
+        # Should load without crashing
+        lessons = brain_engine.load_all_lessons()
+        big = [l for l in lessons if l.get("id") == "big-lesson"]
+        assert len(big) == 1
+        # Guard should still work (the lesson has no trigger patterns, so no match)
+        result = brain_engine.guard("test", "agent", auto_confirm=True)
+        assert result is True
+
+    def test_permission_error_on_lessons_dir(self, brain_home, capsys):
+        """Inaccessible lesson files should be skipped with a warning."""
+        import stat
+        # Create a valid lesson + an unreadable file
+        (brain_home / "lessons" / "ok.yaml").write_text(
+            "id: ok\nseverity: info\nlesson: fine\n"
+        )
+        bad_file = brain_home / "lessons" / "noperm.yaml"
+        bad_file.write_text("id: noperm\nseverity: critical\nlesson: secret\n")
+        # Remove read permission
+        bad_file.chmod(0o000)
+        try:
+            lessons = brain_engine.load_all_lessons()
+            # The readable lesson should still load
+            ok = [l for l in lessons if l.get("id") == "ok"]
+            assert len(ok) == 1
+        finally:
+            # Restore permission for cleanup
+            bad_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+    def test_empty_yaml_file_skipped(self, brain_home, capsys):
+        """Empty YAML file should be skipped without error."""
+        (brain_home / "lessons" / "empty.yaml").write_text("")
+        (brain_home / "lessons" / "valid.yaml").write_text(
+            "id: valid\nseverity: info\nlesson: ok\n"
+        )
+        lessons = brain_engine.load_all_lessons()
+        valid = [l for l in lessons if l.get("id") == "valid"]
+        assert len(valid) == 1
+        # Empty file should not produce a lesson
+        empty = [l for l in lessons if l.get("id") == "empty"]
+        assert len(empty) == 0
+
+    def test_binary_content_in_yaml_handled(self, brain_home, capsys):
+        """Binary/garbage content in a .yaml file should not crash."""
+        # Write binary-like garbage to a yaml file
+        garbage = bytes(range(256)) * 10
+        (brain_home / "lessons" / "garbage.yaml").write_bytes(garbage)
+        (brain_home / "lessons" / "real.yaml").write_text(
+            "id: real\nseverity: info\nlesson: real lesson\n"
+        )
+        # Should not crash; garbage file should be skipped
+        lessons = brain_engine.load_all_lessons()
+        real = [l for l in lessons if l.get("id") == "real"]
+        assert len(real) == 1
+
+
+class TestSearchCommand:
+    """Tests for brain search command."""
+
+    def test_search_by_keyword(self, brain_home, sample_lesson, capsys):
+        """Search should find lessons matching keyword."""
+        result = brain_engine.cmd_search(["PUT"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "test-put-safety" in captured.out
+
+    def test_search_no_results(self, brain_home, capsys):
+        """Search with no matches should report no results."""
+        result = brain_engine.cmd_search(["nonexistent_xyz"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No lessons found" in captured.out
+
+    def test_search_by_tag(self, brain_home, sample_lesson, capsys):
+        """Search with --tag filter should work."""
+        result = brain_engine.cmd_search(["--tag", "api"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "test-put-safety" in captured.out
+
+    def test_search_by_severity(self, brain_home, sample_lesson, capsys):
+        """Search with --severity filter should work."""
+        result = brain_engine.cmd_search(["--severity", "critical"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "test-put-safety" in captured.out
+
+    def test_search_no_args(self, capsys):
+        """Search with no arguments should show usage."""
+        result = brain_engine.cmd_search([])
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Usage" in captured.err or "search" in captured.err
+
+    def test_search_combined_keyword_and_tag(self, brain_home, capsys):
+        """Search with keyword + tag should AND the filters."""
+        (brain_home / "lessons" / "a.yaml").write_text(
+            "id: tag-match\nseverity: info\nlesson: test\ntags: [special]\n"
+        )
+        (brain_home / "lessons" / "b.yaml").write_text(
+            "id: keyword-match\nseverity: info\nlesson: special keyword here\ntags: [other]\n"
+        )
+        # Search for keyword "special" with tag "special" — only a.yaml matches both
+        result = brain_engine.cmd_search(["--tag", "special", "special"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "tag-match" in captured.out
+
+
+class TestStatsVerbose:
+    """Tests for brain stats --verbose."""
+
+    def test_stats_verbose_shows_categories(self, brain_home, sample_lesson, capsys):
+        """--verbose should show tag categories."""
+        result = brain_engine.cmd_stats(["--verbose"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Categories" in captured.out
+        assert "api" in captured.out
+
+    def test_stats_verbose_shows_severity_breakdown(self, brain_home, sample_lesson, capsys):
+        """--verbose should show severity breakdown."""
+        result = brain_engine.cmd_stats(["--verbose"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Severity Breakdown" in captured.out
+        assert "Critical" in captured.out
+
+    def test_stats_verbose_shows_recently_added(self, brain_home, sample_lesson, capsys):
+        """--verbose should show recently added lessons."""
+        result = brain_engine.cmd_stats(["--verbose"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Recently Added" in captured.out
+
+    def test_stats_verbose_shows_top_triggers(self, brain_home, sample_lesson, capsys):
+        """--verbose should show top guard triggers when audit data exists."""
+        # Create some audit entries
+        brain_engine.guard("curl -X PUT /api/test", "test", auto_confirm=True)
+        brain_engine.guard("curl -X PUT /api/test2", "test", auto_confirm=True)
+        capsys.readouterr()  # clear guard output
+        result = brain_engine.cmd_stats(["--verbose"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Top 5 Guard Triggers" in captured.out
+
+    def test_stats_short_v_flag(self, brain_home, sample_lesson, capsys):
+        """-v should work as shorthand for --verbose."""
+        result = brain_engine.cmd_stats(["-v"])
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Severity Breakdown" in captured.out
