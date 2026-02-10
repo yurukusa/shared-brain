@@ -731,6 +731,165 @@ def cmd_benchmark(args):
     os.execvp(sys.executable, [sys.executable, str(benchmark_script)])
 
 
+def cmd_demo(args):
+    """Offline demo mode — pre-populated sandbox with sample data."""
+    import tempfile
+    import shutil
+
+    CYAN = "\033[1;36m"
+    GREEN = "\033[1;32m"
+    YELLOW = "\033[1;33m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+    print(f"""
+{CYAN}╔══════════════════════════════════════════════╗
+║         🧠 Shared Brain Demo Mode            ║
+║                                              ║
+║  A sandbox with pre-loaded lessons and       ║
+║  audit data. Try every command risk-free.    ║
+╚══════════════════════════════════════════════╝{RESET}
+""")
+
+    # Create temp sandbox
+    demo_dir = Path(tempfile.mkdtemp(prefix="brain-demo-"))
+    demo_lessons = demo_dir / "lessons"
+    demo_lessons.mkdir()
+    demo_audit = demo_dir / "audit"
+    demo_audit.mkdir()
+
+    # Save originals
+    original_brain_dir = BRAIN_DIR
+    original_lessons = LESSONS_DIR
+    original_audit = AUDIT_FILE
+
+    # Point module globals to sandbox (including BUILTIN_LESSONS to isolate demo)
+    _mod = sys.modules[__name__]
+    original_builtin = BUILTIN_LESSONS
+    _mod.BRAIN_DIR = demo_dir
+    _mod.LESSONS_DIR = demo_lessons
+    _mod.AUDIT_FILE = demo_dir / "audit.jsonl"
+    _mod.BUILTIN_LESSONS = demo_dir / "no-builtins"  # Non-existent dir to suppress built-ins
+
+    try:
+        # Create demo lessons
+        demo_lesson_data = [
+            {
+                "id": "api-put-safety",
+                "severity": "critical",
+                "created": "2026-02-08",
+                "violated_count": 2,
+                "last_violated": "2026-02-09",
+                "trigger_patterns": [r"PUT\s+/api/", r"curl.*-X\s+PUT", r"requests\.put"],
+                "lesson": "PUT replaces the ENTIRE resource.\nAlways GET before PUT to preserve existing fields.",
+                "checklist": ["GET the current resource state", "PUT body contains ALL required fields"],
+                "source": {"incident": "Zenn article overwrite — 5 articles deleted by PUT without GET"},
+                "tags": ["api", "data-safety"],
+            },
+            {
+                "id": "git-force-push",
+                "severity": "critical",
+                "created": "2026-02-03",
+                "violated_count": 1,
+                "trigger_patterns": [r"git push.*--force", r"git reset.*--hard", r"rm\s+-rf"],
+                "lesson": "Force push, hard reset, and rm -rf are destructive and hard to reverse.\nAlways create a backup branch first.",
+                "checklist": ["Created backup branch", "Verified current branch", "User explicitly requested"],
+                "source": {"incident": "Draemorth project destruction"},
+                "tags": ["git", "destructive"],
+            },
+            {
+                "id": "verify-before-claim",
+                "severity": "warning",
+                "created": "2026-02-09",
+                "violated_count": 3,
+                "trigger_patterns": [r"echo.*done", r"echo.*complete", r"echo.*success"],
+                "lesson": "Never claim a task is complete without verifying the result.\nAlways check the actual output, not just the exit code.",
+                "checklist": ["Ran verification command", "Checked actual output", "Took screenshot if external"],
+                "tags": ["verification", "quality"],
+            },
+            {
+                "id": "test-before-deploy",
+                "severity": "warning",
+                "created": "2026-02-10",
+                "violated_count": 0,
+                "trigger_patterns": [r"deploy.*prod", r"kubectl apply", r"terraform apply"],
+                "lesson": "Always run tests before deploying to production.\nA passing CI pipeline is not enough — run tests locally too.",
+                "checklist": ["Tests pass locally", "CI pipeline green", "Rollback plan exists"],
+                "tags": ["deploy", "testing"],
+            },
+        ]
+
+        for lesson in demo_lesson_data:
+            dump_yaml(lesson, demo_lessons / f"{lesson['id']}.yaml")
+
+        # Create demo audit entries
+        audit_entries = [
+            {"timestamp": "2026-02-09T08:15:00Z", "agent": "cc-main", "action": "curl -X PUT https://api.zenn.dev/articles/abc", "lessons_matched": ["api-put-safety"], "checked": True, "followed": False, "note": "user_aborted"},
+            {"timestamp": "2026-02-09T08:20:00Z", "agent": "cc-main", "action": "curl -X GET https://api.zenn.dev/articles/abc", "lessons_matched": [], "checked": True, "followed": True, "note": "no_match"},
+            {"timestamp": "2026-02-09T08:21:00Z", "agent": "cc-main", "action": "curl -X PUT https://api.zenn.dev/articles/abc", "lessons_matched": ["api-put-safety"], "checked": True, "followed": True, "note": "user_confirmed"},
+            {"timestamp": "2026-02-09T10:30:00Z", "agent": "cc-dev", "action": "git push --force origin main", "lessons_matched": ["git-force-push"], "checked": True, "followed": False, "note": "user_aborted"},
+            {"timestamp": "2026-02-09T14:00:00Z", "agent": "cc-main", "action": "echo 'deployment complete'", "lessons_matched": ["verify-before-claim"], "checked": True, "followed": True, "note": "user_confirmed"},
+            {"timestamp": "2026-02-10T09:00:00Z", "agent": "cc-main", "action": "ls -la", "lessons_matched": [], "checked": True, "followed": True, "note": "no_match"},
+            {"timestamp": "2026-02-10T11:30:00Z", "agent": "cc-dev", "action": "curl -X PUT https://api.example.com/data", "lessons_matched": ["api-put-safety"], "checked": True, "followed": True, "note": "user_confirmed"},
+        ]
+
+        with open(_mod.AUDIT_FILE, "w") as f:
+            for entry in audit_entries:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        print(f"{GREEN}Sandbox created with:{RESET}")
+        print(f"  • 4 lessons (2 critical, 2 warning)")
+        print(f"  • 7 audit entries across 2 agents")
+        print(f"  • Sandbox dir: {demo_dir}")
+        print()
+        print(f"{BOLD}Try these commands:{RESET}")
+        print()
+        print(f"  {CYAN}brain list{RESET}             — See all demo lessons")
+        print(f"  {CYAN}brain guard \"curl -X PUT ...\"{RESET}  — Trigger a guard")
+        print(f"  {CYAN}brain check \"PUT\"{RESET}      — Search lessons")
+        print(f"  {CYAN}brain audit{RESET}             — View compliance report")
+        print(f"  {CYAN}brain stats{RESET}             — Quick stats")
+        print(f"  {CYAN}brain export --format md{RESET} — Export lessons")
+        print()
+
+        # Run the requested subcommand, or start interactive mode
+        if args:
+            subcmd = args[0]
+            subargs = args[1:]
+            if subcmd in COMMANDS:
+                COMMANDS[subcmd](subargs)
+            else:
+                print(f"Unknown demo command: {subcmd}")
+        else:
+            # Show list + audit as default demo experience
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            print(f"{YELLOW}  Demo: brain list{RESET}")
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            cmd_list([])
+
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            print(f"{YELLOW}  Demo: brain audit{RESET}")
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            cmd_audit([])
+
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            print(f"{YELLOW}  Demo: brain stats{RESET}")
+            print(f"{YELLOW}{'─'*50}{RESET}")
+            cmd_stats([])
+
+            print(f"\n{GREEN}Demo complete!{RESET} Run {CYAN}brain demo <command>{RESET} to try specific commands.")
+
+    finally:
+        # Restore original paths
+        _mod.BRAIN_DIR = original_brain_dir
+        _mod.LESSONS_DIR = original_lessons
+        _mod.AUDIT_FILE = original_audit
+        _mod.BUILTIN_LESSONS = original_builtin
+        shutil.rmtree(demo_dir, ignore_errors=True)
+
+    return 0
+
+
 def cmd_tutorial(args):
     """Interactive tutorial — walk through lesson creation, guard, and audit."""
     import time
@@ -939,6 +1098,7 @@ COMMANDS = {
     "export": cmd_export,
     "hook": cmd_hook,
     "tutorial": cmd_tutorial,
+    "demo": cmd_demo,
     "benchmark": cmd_benchmark,
     "help": cmd_help,
     "--help": cmd_help,
