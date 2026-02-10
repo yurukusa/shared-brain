@@ -1,0 +1,127 @@
+.TH BRAIN 1 "2026-02-11" "Shared Brain 0.1.0" "User Commands"
+.SH NAME
+brain \- AI agent guardrail CLI
+.SH SYNOPSIS
+.B brain
+.I command
+.RI [ options ]
+.SH DESCRIPTION
+.B brain
+is a CLI tool that checks commands against structured lessons before
+execution, logs compliance, and builds audit trails. It prevents AI agents
+from repeating known mistakes by enforcing guardrails automatically.
+.SH COMMANDS
+.TP
+.B list
+Show all lessons (built-in and user-created).
+.TP
+.B guard \fIcommand\fR
+Check a command against all lessons. If a match is found, display the
+lesson and ask for confirmation. Returns exit code 0 if safe, 1 if blocked.
+.TP
+.B check \fIkeyword\fR
+Search lessons by keyword. Matches against all fields including id,
+lesson text, tags, and trigger patterns.
+.TP
+.B write
+Add a new lesson interactively.
+.TP
+.B write \-f \fIfile.yaml\fR
+Add a lesson from a YAML file.
+.TP
+.B audit \fR[\fB\-\-json\fR]
+Show compliance report with per-lesson statistics. Use \fB\-\-json\fR
+for machine-readable output.
+.TP
+.B stats
+Quick summary of lessons and compliance metrics.
+.TP
+.B export \fR[\fB\-\-format\fR \fImd|json\fR] [\fB\-\-output\fR \fIfile\fR]
+Export lessons in Markdown or JSON format. Prints to stdout if no
+output file is specified.
+.TP
+.B hook install
+Install brain guard as a Claude Code PreToolUse hook.
+Modifies ~/.claude/settings.json.
+.TP
+.B hook uninstall
+Remove brain guard hook from Claude Code.
+.TP
+.B hook status
+Check if the brain guard hook is installed.
+.TP
+.B tutorial
+Interactive walkthrough for new users. Creates a temporary lesson,
+demonstrates the guard, and shows the audit trail.
+.TP
+.B help
+Show usage information.
+.SH ENVIRONMENT
+.TP
+.B BRAIN_HOME
+Override the brain data directory. Default: \fI~/.brain\fR
+.TP
+.B BRAIN_AGENT
+Set the agent name used in audit logging. Default: hostname.
+.SH FILES
+.TP
+.I ~/.brain/lessons/
+User-created lessons (YAML files).
+.TP
+.I ~/.brain/audit.jsonl
+Audit trail of all guard checks.
+.SH LESSON FORMAT
+Lessons are YAML files with the following structure:
+.PP
+.nf
+id: my-lesson-id
+severity: critical    # critical | warning | info
+trigger_patterns:
+  - "regex pattern"
+lesson: |
+  What went wrong and why.
+checklist:
+  - "Step to verify"
+tags: [relevant, tags]
+.fi
+.PP
+Trigger patterns use Python regex with re.IGNORECASE. Invalid regex
+falls back to substring matching.
+.SH EXIT STATUS
+.TP
+.B 0
+Command is safe or user confirmed.
+.TP
+.B 1
+Command blocked by lesson or user aborted.
+.SH EXAMPLES
+.PP
+Check a command before running it:
+.PP
+.nf
+brain guard "curl -X PUT https://api.example.com/articles/123"
+.fi
+.PP
+Search for lessons about API safety:
+.PP
+.nf
+brain check "PUT"
+.fi
+.PP
+Add a lesson from a file:
+.PP
+.nf
+brain write -f my-lesson.yaml
+.fi
+.PP
+Install as a Claude Code hook:
+.PP
+.nf
+brain hook install
+.fi
+.SH AUTHOR
+yurukusa <https://github.com/yurukusa>
+.SH SEE ALSO
+.BR claude (1)
+.SH BUGS
+Report bugs at: https://github.com/yurukusa/shared-brain/issues
