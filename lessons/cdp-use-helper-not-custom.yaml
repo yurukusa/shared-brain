@@ -1,0 +1,41 @@
+id: cdp-use-helper-not-custom
+severity: warning
+created: "2026-02-10"
+violated_count: 1
+last_violated: "2026-02-10"
+
+trigger_patterns:
+  - "ClientWebSocket"
+  - "WebSocketMessageType"
+  - "Send-And-Recv"
+  - "New-Object System.Net.WebSockets"
+  - "cat > /tmp/.*\\.ps1"
+  - "cdp_.*\\.ps1"
+
+lesson: |
+  CDPスクリプトを毎回ゼロから書くな。
+  cdp_helper.ps1が/tmpに存在し、以下の機能を持つ:
+  
+  - beforeunloadダイアログ自動承認
+  - Page.javascriptDialogOpening自動処理
+  - タイムアウトハンドリング
+  
+  使い方:
+  cdp_helper.ps1 -Action navigate -TabId <ID> -Url <URL>
+  cdp_helper.ps1 -Action eval -TabId <ID> -Expression "<JS>"
+  cdp_helper.ps1 -Action screenshot -TabId <ID> -OutFile <PATH>
+  
+  自作PSスクリプトで同じ機能を再実装するのは:
+  - ダイアログ処理の欠落
+  - WebSocket切断時のリカバリー欠如
+  - beforeunload対策の漏れ
+  につながる。既存ツールを使え。
+
+checklist:
+  - "cdp_helper.ps1が存在するか確認"
+  - "自作PS代わりにcdp_helper.ps1を使用"
+
+source:
+  incident: "Custom PS scripts crashed on WebSocket disconnect, cdp_helper.ps1 had the fix (2026-02-10)"
+
+tags: [cdp, powershell, reuse, helper]

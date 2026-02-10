@@ -1,0 +1,43 @@
+id: tweet-use-cdp
+severity: critical
+created: "2026-02-10"
+violated_count: 1
+last_violated: "2026-02-10"
+
+trigger_patterns:
+  - "~/bin/tweet"
+  - "bin/tweet "
+  - "tweet \""
+  - "tweet '"
+
+lesson: |
+  ~/bin/tweet コマンドはSendKeysベースで本質的に不安定。使うな。
+  
+  このコマンドは以下の問題を持つ:
+  1. SetForegroundWindowが正しいChromeウィンドウを選ぶ保証がない
+  2. x.comが開いていることを事前確認しない
+  3. beforeunloadダイアログを処理できない
+  4. 投稿成功を検証しない
+  
+  代わりにCDP直接操作（cdp_helper.ps1経由）を使え:
+  1. /json/new で新タブ作成 or 既存タブでbeforeunload除去
+  2. cdp_helper.ps1 -Action navigate で x.com/compose/post へ移動
+  3. テキストをUTF-8ファイルに書き出し
+  4. cdp_helper.ps1 -Action eval でエディタフォーカス
+  5. Input.insertText でテキスト挿入
+  6. Input.dispatchMouseEvent でポストボタンをクリック
+  7. プロフィールページで最新ツイートを検証
+  
+  詳細: LESSONS.md「X投稿の推奨フロー」セクション
+
+checklist:
+  - "CDPポート9223が生きているか確認"
+  - "x.com/compose/post にCDP経由でナビゲート"
+  - "テキストをUTF-8ファイル経由で挿入"
+  - "ポストボタンをCDP mouseEventでクリック"
+  - "投稿後にプロフィールで検証"
+
+source:
+  incident: "Tweet command failed - wrong window activated, multiple retries (2026-02-10)"
+
+tags: [twitter, cdp, browser-automation, sendkeys-forbidden]
