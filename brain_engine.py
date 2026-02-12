@@ -1836,16 +1836,22 @@ def cmd_doctor(args):
     if LESSONS_DIR.exists():
         for f in sorted(LESSONS_DIR.glob("*.yaml")) + sorted(LESSONS_DIR.glob("*.yml")):
             try:
-                load_yaml(f)
-                user_lessons += 1
+                data = load_yaml(f)
+                if not isinstance(data, dict) or "lesson" not in data:
+                    lesson_errors.append((f.name, "missing required 'lesson' field"))
+                else:
+                    user_lessons += 1
             except Exception as e:
                 lesson_errors.append((f.name, str(e)))
 
     if BUILTIN_LESSONS.exists():
         for f in sorted(BUILTIN_LESSONS.glob("*.yaml")) + sorted(BUILTIN_LESSONS.glob("*.yml")):
             try:
-                load_yaml(f)
-                builtin_count += 1
+                data = load_yaml(f)
+                if not isinstance(data, dict) or "lesson" not in data:
+                    lesson_errors.append((f.name, "missing required 'lesson' field"))
+                else:
+                    builtin_count += 1
             except Exception as e:
                 lesson_errors.append((f.name, str(e)))
 
