@@ -883,7 +883,9 @@ def cmd_hook(args):
         settings = json.loads(settings_path.read_text())
         hooks = settings.get("hooks", {}).get("PreToolUse", [])
         installed = any("brain guard" in json.dumps(h) for h in hooks)
-        print(f"{'\U0001f7e2 ' + msg('hook_status_installed') if installed else '\u26aa ' + msg('hook_status_not_installed')}")
+        icon = "\U0001f7e2" if installed else "\u26aa"
+        status = msg('hook_status_installed') if installed else msg('hook_status_not_installed')
+        print(f"{icon} {status}")
         return 0
 
     if args[0] == "uninstall":
