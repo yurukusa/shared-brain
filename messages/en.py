@@ -193,6 +193,11 @@ Usage:
   brain stats --verbose       Detailed breakdown with categories & top triggers
   brain export [--format md|json|html] [--output file]
                               Export lessons for other projects
+  brain share <lesson_id>     Opt-in share a lesson globally
+  brain unshare <lesson_id>   Revoke global sharing
+  brain update                Update global safety pack
+  brain registry stats        Show global registry stats
+  brain registry build        Build pack from shared lessons
   brain hook install          Auto-install guard as Claude Code hook
   brain hook uninstall        Remove brain guard hook
   brain hook status           Check if hook is installed
@@ -205,6 +210,7 @@ Environment:
   BRAIN_HOME    Override brain directory (default: ~/.brain)
   BRAIN_AGENT   Set agent name for audit logging
   BRAIN_LANG    Set language (e.g., ja, en)
+  BRAIN_REGISTRY_PACK  Path to global safety pack (default: ~/.brain/registry/beginner_safety_pack.json)
 
 Examples:
   brain guard "curl -X PUT https://api.example.com/articles/123"

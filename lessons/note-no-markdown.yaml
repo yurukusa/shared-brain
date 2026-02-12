@@ -1,0 +1,36 @@
+id: note-no-markdown
+severity: medium
+created: "2026-02-13"
+violated_count: 1
+last_violated: "2026-02-12"
+
+trigger_patterns:
+  - "note.com/notes/new"
+  - "note.com.*editor"
+  - "note.*ProseMirror"
+  - "note.*投稿"
+  - "note.*記事"
+
+lesson: |
+  noteのエディタはProseMirrorリッチテキストエディタであり、
+  Markdown記法をそのまま貼り付けてもHTMLに変換されない。
+
+  ## や ### はそのまま「## 見出し」というプレーンテキストとして表示される。
+  **太字** や [リンク](url) も同様。
+
+  note に投稿する場合:
+  1. Markdownの見出し（##）→ HTML の <h2> に変換してから挿入
+  2. または、ProseMirrorのAPIを使って直接リッチテキストとして挿入
+  3. プレーンテキストとして挿入する場合は、Markdown記法を除去する
+
+  推奨: Pythonで事前にMarkdown→HTMLに変換し、innerHTMLで挿入する。
+
+checklist:
+  - "Markdown記法をそのまま挿入していない"
+  - "見出しはHTML形式に変換済み"
+  - "投稿後にスクリーンショットで表示を確認した"
+
+source:
+  incident: "note記事でMarkdown記法がプレーンテキスト表示 (2026-02-12)"
+
+tags: [note, markdown, richtext, prosemirror, editor]

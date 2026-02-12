@@ -72,6 +72,11 @@ brain audit
 | `brain audit` | Compliance report |
 | `brain stats` | Quick summary |
 | `brain export` | Export lessons (markdown/json) |
+| `brain share <lesson_id>` | Opt-in share a lesson globally |
+| `brain unshare <lesson_id>` | Revoke global sharing |
+| `brain update` | Update global safety pack |
+| `brain registry stats` | Show global registry stats |
+| `brain registry build` | Build pack from shared lessons |
 | `brain hook install` | Auto-install guard as Claude Code hook |
 | `brain hook uninstall` | Remove brain guard hook |
 | `brain hook status` | Check if hook is installed |
@@ -94,6 +99,16 @@ checklist:
   - "GET the current state"
   - "PUT body contains ALL fields"
 ```
+
+### Global Registry (Beginner Safety Pack)
+Shared Brain can aggregate opt-in lessons into a global safety pack for beginners.
+
+Workflow:
+1. `brain share <lesson_id>` to opt-in\n
+2. `brain registry build` to generate a pack\n
+3. `brain update` to install the pack locally\n
+
+The pack is installed into `~/.brain/registry/active/` and merged into guard checks.
 
 ### Guard
 When you run `brain guard`, it matches your command against all lesson `trigger_patterns`. If a match is found, it shows the lesson and asks for confirmation.

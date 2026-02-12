@@ -193,6 +193,11 @@ MESSAGES = {
   brain stats --verbose       カテゴリ別・トップトリガー等の詳細
   brain export [--format md|json|html] [--output file]
                               レッスンを他プロジェクト向けにエクスポート
+  brain share <lesson_id>     レッスンをグローバル共有に同意
+  brain unshare <lesson_id>   グローバル共有を取り消し
+  brain update                グローバル安全パックを更新
+  brain registry stats        グローバルレジストリ統計を表示
+  brain registry build        共有レッスンからパックを生成
   brain hook install          ガードを Claude Code フックに自動インストール
   brain hook uninstall        brain guard フックを削除
   brain hook status           フックがインストール済みか確認
@@ -205,6 +210,7 @@ MESSAGES = {
   BRAIN_HOME    brainディレクトリを上書き (デフォルト: ~/.brain)
   BRAIN_AGENT   監査ログ用のエージェント名を設定
   BRAIN_LANG    言語を設定 (例: ja, en)
+  BRAIN_REGISTRY_PACK  グローバル安全パックのパス (デフォルト: ~/.brain/registry/beginner_safety_pack.json)
 
 使用例:
   brain guard "curl -X PUT https://api.example.com/articles/123"

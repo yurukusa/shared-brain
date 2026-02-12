@@ -9,6 +9,7 @@ import os
 import json
 import re
 import datetime
+import math
 import glob as globmod
 import subprocess
 from pathlib import Path
@@ -38,16 +39,28 @@ def msg(key: str, **kwargs) -> str:
     return _msg_func(key, **kwargs)
 
 
+VERSION = "0.1.0"
+
 BRAIN_DIR = Path(os.environ.get("BRAIN_HOME", Path.home() / ".brain"))
 LESSONS_DIR = BRAIN_DIR / "lessons"
 AUDIT_FILE = BRAIN_DIR / "audit.jsonl"
 BUILTIN_LESSONS = Path(__file__).parent / "lessons"
 PLUGINS_DIR = BRAIN_DIR / "plugins"
+REGISTRY_DIR = BRAIN_DIR / "registry"
+REGISTRY_ACTIVE_DIR = REGISTRY_DIR / "active"
+REGISTRY_QUARANTINE_DIR = REGISTRY_DIR / "quarantine"
+REGISTRY_META_DIR = REGISTRY_DIR / "meta"
+SHARED_DIR = BRAIN_DIR / "shared"
+SHARED_LESSONS_DIR = SHARED_DIR / "lessons"
 
 
 def ensure_dirs():
     LESSONS_DIR.mkdir(parents=True, exist_ok=True)
     (BRAIN_DIR / "audit").mkdir(parents=True, exist_ok=True)
+    REGISTRY_ACTIVE_DIR.mkdir(parents=True, exist_ok=True)
+    REGISTRY_QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
+    REGISTRY_META_DIR.mkdir(parents=True, exist_ok=True)
+    SHARED_LESSONS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # --- YAML helpers (works with or without PyYAML) ---
@@ -230,6 +243,8 @@ def load_plugins():
 def get_all_lesson_dirs():
     """Return all directories that contain lessons."""
     dirs = [LESSONS_DIR]
+    if REGISTRY_ACTIVE_DIR.exists():
+        dirs.append(REGISTRY_ACTIVE_DIR)
     if BUILTIN_LESSONS.exists():
         dirs.append(BUILTIN_LESSONS)
     return dirs
@@ -316,6 +331,69 @@ def _sanitize_lesson_id(lid: str) -> str:
     if not sanitized:
         raise ValueError(f"Invalid lesson ID after sanitization: '{lid}'")
     return sanitized
+
+
+def _find_local_lesson_file(lid: str):
+    """Find a lesson file in the local lessons directory by id or filename."""
+    sanitized = _sanitize_lesson_id(lid)
+    for ext in ("yaml", "yml"):
+        path = LESSONS_DIR / f"{sanitized}.{ext}"
+        if path.exists():
+            return path
+    return None
+
+
+def _validate_lesson_schema(lesson: dict):
+    """Strict schema validation for shared/global lessons."""
+    required = ["id", "severity", "trigger_patterns", "lesson", "checklist", "tags"]
+    for key in required:
+        if key not in lesson:
+            raise ValueError(f"Missing required field: {key}")
+
+    if not isinstance(lesson.get("id"), str):
+        raise ValueError("id must be a string")
+    if lesson.get("severity") not in ("critical", "warning", "info"):
+        raise ValueError("severity must be critical|warning|info")
+    if not isinstance(lesson.get("trigger_patterns"), list):
+        raise ValueError("trigger_patterns must be a list")
+    if not isinstance(lesson.get("lesson"), str):
+        raise ValueError("lesson must be a string")
+    if not isinstance(lesson.get("checklist"), list):
+        raise ValueError("checklist must be a list")
+    if not isinstance(lesson.get("tags"), list):
+        raise ValueError("tags must be a list")
+
+    if len(lesson.get("lesson", "")) > 2000:
+        raise ValueError("lesson too long (max 2000 chars)")
+    if len(lesson.get("trigger_patterns", [])) > 10:
+        raise ValueError("too many trigger_patterns (max 10)")
+    if len(lesson.get("checklist", [])) > 10:
+        raise ValueError("too many checklist items (max 10)")
+
+    for pat in lesson.get("trigger_patterns", []):
+        if not isinstance(pat, str):
+            raise ValueError("trigger_patterns must be strings")
+    for item in lesson.get("checklist", []):
+        if not isinstance(item, str):
+            raise ValueError("checklist items must be strings")
+    for tag in lesson.get("tags", []):
+        if not isinstance(tag, str):
+            raise ValueError("tags must be strings")
+
+
+def _normalize_severity(lesson: dict):
+    """Normalize severity values to critical|warning|info."""
+    sev = lesson.get("severity")
+    if not isinstance(sev, str):
+        return
+    sev_lower = sev.strip().lower()
+    mapping = {
+        "high": "critical",
+        "medium": "warning",
+        "low": "info",
+    }
+    if sev_lower in mapping:
+        lesson["severity"] = mapping[sev_lower]
 
 
 # --- Guard engine ---
@@ -1046,6 +1124,173 @@ def _html_escape(text: str) -> str:
             .replace('"', "&quot;"))
 
 
+def cmd_share(args):
+    """Opt-in share a local lesson."""
+    if not args:
+        print("Usage: brain share <lesson_id>", file=sys.stderr)
+        return 1
+
+    lid = args[0]
+    lesson_path = _find_local_lesson_file(lid)
+    if not lesson_path:
+        print(f"Lesson not found: {lid}", file=sys.stderr)
+        return 1
+
+    lesson = load_yaml(lesson_path)
+    if not lesson or not isinstance(lesson, dict):
+        print(f"Invalid lesson file: {lesson_path}", file=sys.stderr)
+        return 1
+
+    _normalize_severity(lesson)
+    _validate_lesson_schema(lesson)
+    lesson["shared"] = True
+    lesson["shared_at"] = datetime.date.today().isoformat()
+    dump_yaml(lesson, lesson_path)
+
+    sanitized = _sanitize_lesson_id(lesson.get("id", lid))
+    shared_path = SHARED_LESSONS_DIR / f"{sanitized}.yaml"
+    dump_yaml(lesson, shared_path)
+
+    print(f"\u2705 shared: {sanitized}")
+    return 0
+
+
+def cmd_unshare(args):
+    """Revoke sharing of a local lesson."""
+    if not args:
+        print("Usage: brain unshare <lesson_id>", file=sys.stderr)
+        return 1
+
+    lid = args[0]
+    lesson_path = _find_local_lesson_file(lid)
+    if not lesson_path:
+        print(f"Lesson not found: {lid}", file=sys.stderr)
+        return 1
+
+    lesson = load_yaml(lesson_path)
+    if not lesson or not isinstance(lesson, dict):
+        print(f"Invalid lesson file: {lesson_path}", file=sys.stderr)
+        return 1
+
+    lesson["shared"] = False
+    dump_yaml(lesson, lesson_path)
+
+    sanitized = _sanitize_lesson_id(lesson.get("id", lid))
+    shared_path = SHARED_LESSONS_DIR / f"{sanitized}.yaml"
+    if shared_path.exists():
+        shared_path.unlink()
+
+    print(f"\u2705 unshared: {sanitized}")
+    return 0
+
+
+def cmd_update(args):
+    """Pull and install the global beginner safety pack (local file MVP)."""
+    pack_path = Path(os.environ.get("BRAIN_REGISTRY_PACK", str(REGISTRY_DIR / "beginner_safety_pack.json")))
+    if not pack_path.exists():
+        print(f"Global pack not found: {pack_path}", file=sys.stderr)
+        return 1
+
+    data = json.loads(pack_path.read_text())
+    tier1 = data.get("tier1", [])
+    tier2 = data.get("tier2", [])
+
+    if not isinstance(tier1, list) or not isinstance(tier2, list):
+        print("Invalid pack format (tier1/tier2 must be lists)", file=sys.stderr)
+        return 1
+
+    for f in list(REGISTRY_ACTIVE_DIR.glob("*.yaml")) + list(REGISTRY_ACTIVE_DIR.glob("*.yml")):
+        f.unlink()
+
+    count = 0
+    for lesson in tier1 + tier2:
+        if not isinstance(lesson, dict):
+            continue
+        _normalize_severity(lesson)
+        _validate_lesson_schema(lesson)
+        sanitized = _sanitize_lesson_id(lesson.get("id", "unknown"))
+        out_path = REGISTRY_ACTIVE_DIR / f"{sanitized}.yaml"
+        dump_yaml(lesson, out_path)
+        count += 1
+
+    print(f"\u2705 updated: beginner_safety_pack ({count} lessons)")
+    return 0
+
+
+def cmd_registry(args):
+    """Registry command (stats only for MVP)."""
+    if args and args[0] not in ("stats", "build"):
+        print("Usage: brain registry stats|build", file=sys.stderr)
+        return 1
+
+    pack_path = Path(os.environ.get("BRAIN_REGISTRY_PACK", str(REGISTRY_DIR / "beginner_safety_pack.json")))
+
+    if args and args[0] == "build":
+        # Build pack from shared lessons
+        sev_weight = {"critical": 5, "warning": 3, "info": 1}
+
+        def score(lesson):
+            freq = lesson.get("violated_count") or lesson.get("frequency") or 1
+            try:
+                freq = int(freq)
+            except Exception:
+                freq = 1
+            sev = lesson.get("severity", "info")
+            w = sev_weight.get(sev, 1)
+            trust = 1.0 if lesson.get("shared") else 0.6
+            return math.log(freq + 1) * w * trust
+
+        lessons = []
+        for path in sorted(SHARED_LESSONS_DIR.glob("*.y*ml")):
+            lesson = load_yaml(path)
+            if not isinstance(lesson, dict):
+                continue
+            _normalize_severity(lesson)
+            try:
+                _validate_lesson_schema(lesson)
+            except Exception:
+                continue
+            lessons.append(lesson)
+
+        lessons.sort(key=score, reverse=True)
+        def slim(l):
+            return {k: l.get(k) for k in ["id", "severity", "trigger_patterns", "lesson", "checklist", "tags"]}
+
+        slimmed = [slim(l) for l in lessons]
+        tier1 = slimmed[:10]
+        tier2 = slimmed[10:30]
+
+        pack = {
+            "version": "0.1.1",
+            "generated_at": datetime.date.today().isoformat(),
+            "tier1": tier1,
+            "tier2": tier2,
+        }
+        pack_path.parent.mkdir(parents=True, exist_ok=True)
+        pack_path.write_text(json.dumps(pack, ensure_ascii=False, indent=2))
+        print(f"✅ pack built: {pack_path}")
+        print(f"  Tier1: {len(tier1)}")
+        print(f"  Tier2: {len(tier2)}")
+        return 0
+
+    tier1 = tier2 = 0
+    if pack_path.exists():
+        data = json.loads(pack_path.read_text())
+        tier1 = len(data.get("tier1", []))
+        tier2 = len(data.get("tier2", []))
+
+    active_count = len(list(REGISTRY_ACTIVE_DIR.glob("*.yaml")) + list(REGISTRY_ACTIVE_DIR.glob("*.yml")))
+    print("Global Registry Stats")
+    print(f"  Active lessons: {active_count}")
+    if pack_path.exists():
+        print(f"  Tier1: {tier1}")
+        print(f"  Tier2: {tier2}")
+        print(f"  Pack:  {pack_path}")
+    else:
+        print("  Pack:  (not found)")
+    return 0
+
+
 def cmd_search(args):
     """Full-text search across lessons with highlighting and detail."""
     if not args:
@@ -1735,6 +1980,18 @@ def cmd_new(args):
     return 0
 
 
+def cmd_version(args):
+    """Show version, Python, OS, and install path."""
+    import platform
+
+    print(f"\U0001f9e0 Shared Brain v{VERSION}")
+    print(f"   Python:  {sys.version.split()[0]}")
+    print(f"   OS:      {platform.system()} {platform.release()}")
+    print(f"   Install: {Path(__file__).parent.resolve()}")
+    print(f"   Brain:   {BRAIN_DIR}")
+    return 0
+
+
 def cmd_help(args=None):
     """Show help."""
     print(f"\U0001f9e0 {msg('help_text')}")
@@ -1752,6 +2009,10 @@ COMMANDS = {
     "audit": cmd_audit,
     "stats": cmd_stats,
     "export": cmd_export,
+    "share": cmd_share,
+    "unshare": cmd_unshare,
+    "update": cmd_update,
+    "registry": cmd_registry,
     "hook": cmd_hook,
     "uninstall": cmd_uninstall,
     "doctor": cmd_doctor,
@@ -1759,6 +2020,8 @@ COMMANDS = {
     "tutorial": cmd_tutorial,
     "demo": cmd_demo,
     "benchmark": cmd_benchmark,
+    "version": cmd_version,
+    "--version": cmd_version,
     "help": cmd_help,
     "--help": cmd_help,
     "-h": cmd_help,
