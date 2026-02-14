@@ -1,0 +1,27 @@
+id: read-error-messages
+severity: info
+created: "2026-02-10"
+
+trigger_patterns:
+  - "error"
+  - "exception"
+  - "traceback"
+  - "failed"
+  - "Error:"
+
+lesson: |
+  Read the full error message before trying to fix the problem.
+  Most error messages tell you exactly what went wrong and where.
+
+  ALWAYS:
+  1. Read the ENTIRE error message, not just the first line
+  2. Check the stack trace for the actual source of the error
+  3. Search for the specific error text if unclear
+  4. Fix the root cause, not the symptom
+
+checklist:
+  - "Full error message read"
+  - "Root cause identified"
+  - "Fix addresses root cause, not symptom"
+
+tags: [debugging, errors, workflow]

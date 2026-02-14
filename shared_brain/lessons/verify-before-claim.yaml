@@ -1,0 +1,36 @@
+id: verify-before-claim
+severity: warning
+created: "2026-02-08"
+violated_count: 3
+
+trigger_patterns:
+  - "successfully"
+  - "completed"
+  - "done"
+  - "posted"
+  - "published"
+  - "submitted"
+
+lesson: |
+  Never claim an action succeeded without verification.
+
+  "I posted it" and "I verified it was posted" are different statements.
+  AI agents frequently assume success after executing a command,
+  without checking the actual result.
+
+  After any external action (API call, browser automation, file upload):
+  1. Take a screenshot or fetch the result
+  2. Verify the expected outcome actually occurred
+  3. Only THEN report success
+
+  This lesson exists because an agent reported "message sent to Tachikoma"
+  but hadn't actually verified delivery. The user caught it.
+
+checklist:
+  - "Verified the action's result (screenshot, API response, etc.)"
+  - "Confirmed the expected outcome matches reality"
+
+source:
+  incident: "Multiple false success reports (2026-02-08/09)"
+
+tags: [verification, honesty, automation]

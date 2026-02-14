@@ -1,0 +1,43 @@
+id: tachikoma-send-jsclick
+title: "tachikoma-send: マウスクリックもEnterキーも使うな、JS button.click()を使え"
+severity: critical
+category: infrastructure
+created: "2026-02-10"
+source: "繰り返し発生したtachikoma-send送信失敗 — CCが送信成功と思い込み作業停止"
+
+description: |
+  tachikoma-sendの送信が繰り返し失敗し、CCが送信成功と思い込んで作業停止。
+
+  失敗した方法（時系列）:
+  1. マウスクリック（座標ベース）→ 座標がずれると空振り、検証なし
+  2. Enterキー → ProseMirrorが改行として消費、送信されず
+  3. JS button.click() → untrusted eventをReactが無視（長文で特に発生）
+
+  さらに深刻な問題:
+  - タチコマがストリーミング中にStop Hookが発火すると、送信ボタンが「停止」ボタンに変わり送信不可
+  - 失敗したテキストがエディタに残留し、次回送信時に新旧テキストが混在
+
+  正解（v3 ハイブリッド方式 + ストリーミング待機）:
+  Phase 1: Is-Streaming()で停止ボタンの存在を確認、消えるまで最大90秒待機
+  Phase 2: Clear-Editor()でCtrl+A+Backspaceして残留テキストを除去
+  Phase 3: フォーカス→Input.insertTextでテキスト挿入
+  Phase 4: JSでaria-label="送信"ボタンの座標取得→Input.dispatchMouseEvent（trusted）でクリック
+  Phase 5: Check-EditorEmpty()でエディタ空を検証、3回リトライ、全失敗ならexit 1
+
+triggers:
+  - "Input.dispatchMouseEvent"
+  - "click_press"
+  - "click_release"
+  - "mousePressed.*button.*left"
+
+checklist:
+  - "送信前にストリーミング待機（Is-Streaming）があるか？"
+  - "送信前にエディタクリア（Clear-Editor）があるか？"
+  - "送信にJS座標取得+CDPマウスイベント（ハイブリッド）を使っているか？"
+  - "送信後にエディタ空チェック（検証）があるか？"
+  - "失敗時にリトライまたはエラー終了しているか？"
+
+violations:
+  - date: "2026-02-10"
+    agent: "CC"
+    description: "Zenn記事レビュー依頼がタチコマに届かず、応答を永遠に待ち続けた"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shared-brain"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI agents that learn from each other's mistakes — and prove it."
 readme = "README.md"
 license = {text = "MIT"}
@@ -33,13 +33,13 @@ Repository = "https://github.com/yurukusa/shared-brain"
 Issues = "https://github.com/yurukusa/shared-brain/issues"
 
 [project.scripts]
-brain = "brain_engine:main"
+brain = "shared_brain.brain_engine:main"
 
-[tool.setuptools]
-py-modules = ["brain_engine"]
+[tool.setuptools.packages.find]
+include = ["shared_brain*"]
 
 [tool.setuptools.package-data]
-"*" = ["lessons/*.yaml"]
+shared_brain = ["lessons/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

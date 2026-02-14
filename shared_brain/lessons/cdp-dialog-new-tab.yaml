@@ -1,0 +1,43 @@
+id: cdp-dialog-new-tab
+severity: critical
+created: "2026-02-10"
+violated_count: 1
+last_violated: "2026-02-10"
+
+trigger_patterns:
+  - "CDP Timeout"
+  - "cdp.*timeout"
+  - "WebSocket.*timeout"
+  - "MethodInvocationException"
+  - "AggregateException"
+  - "ReceiveAsync"
+
+lesson: |
+  CDPでタイムアウト/WebSocketエラーが出たら、タブがダイアログでスタックしている。
+  
+  同じタブへの再接続はタイムアウトする。リトライは無駄。
+  
+  正しい対処:
+  1. 新タブを作成: PUT http://localhost:9223/json/new?<URL>
+  2. 新しいwebSocketDebuggerUrlに接続
+  3. 固まったタブは放置 or Target.closeTargetで閉じる
+  
+  原因パターン:
+  - compose画面にテキスト入力済みの状態でページ遷移
+    → 「ポストを保存しますか？」ダイアログが出る
+  - beforeunloadをnullにしてもReactの内部ハンドラが残っている場合がある
+  
+  予防策:
+  - ナビゲーション前に window.onbeforeunload = null
+  - cdp_helper.ps1 -Action navigate を使う（3段階のbeforeunload除去+ダイアログ自動承認）
+  - Page.enableでイベント購読し、Page.javascriptDialogOpeningを自動処理
+
+checklist:
+  - "同じタブへのリトライをやめる"
+  - "/json/new で新タブを作成"
+  - "新タブのIDでcdp_helper.ps1を使用"
+
+source:
+  incident: "WebSocket stuck on compose dialog, 10+ retry failures (2026-02-10)"
+
+tags: [cdp, dialog, beforeunload, timeout, new-tab]

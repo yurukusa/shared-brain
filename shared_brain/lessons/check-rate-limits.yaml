@@ -1,0 +1,27 @@
+id: check-rate-limits
+severity: warning
+created: "2026-02-10"
+
+trigger_patterns:
+  - "for.*in.*range.*fetch"
+  - "while.*request"
+  - "batch.*api"
+  - "bulk.*request"
+  - "loop.*curl"
+
+lesson: |
+  Check API rate limits before making bulk requests.
+  Hitting rate limits can lock you out for hours and break your workflow.
+
+  ALWAYS:
+  1. Read the API docs for rate limit info
+  2. Add delays between requests (at least 1 second)
+  3. Handle 429 responses with exponential backoff
+  4. Process in small batches, not all at once
+
+checklist:
+  - "Rate limit documented for this API"
+  - "Delay between requests added"
+  - "429 handler implemented"
+
+tags: [api, rate-limit, reliability]

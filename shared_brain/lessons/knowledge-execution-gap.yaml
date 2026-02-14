@@ -1,0 +1,41 @@
+id: knowledge-execution-gap
+severity: critical
+created: "2026-02-10"
+violated_count: 1
+last_violated: "2026-02-10"
+
+trigger_patterns:
+  - "cat > /tmp/"
+  - "powershell.exe.*-File"
+  - "cdp"
+  - "tweet"
+  - "zenn"
+  - "itch"
+
+lesson: |
+  【メタ教訓】LESSONS.mdに解決策が書いてあるのに使わなかった。
+  
+  2026-02-10の事故:
+  - LESSONS.mdに「X投稿の推奨フロー（CDP 7ステップ）」が明記されていた
+  - LESSONS.mdに「cdp_helper.ps1を使え」と書いてあった
+  - LESSONS.mdに「ダイアログ→新タブ作成」と書いてあった
+  - 全部無視して、~/bin/tweet（SendKeys）を実行し、3回失敗した
+  
+  根本原因: 教訓は「読むもの」であって「強制されるもの」ではなかった。
+  
+  対策:
+  1. brain guardがtrigger_patternsで検知して警告する（このレッスン群）
+  2. ブラウザ操作の前にLESSONS.mdの該当セクションをgrepして確認する
+  3. 既存ツール（cdp_helper.ps1等）が存在するか先に確認してから作業開始
+  
+  これがShared Brainの存在理由そのもの。
+
+checklist:
+  - "LESSONS.mdの関連セクションを確認したか"
+  - "既存ヘルパースクリプトを確認したか"
+  - "過去の失敗パターンに一致していないか"
+
+source:
+  incident: "Tweet posting failure despite documented solution (2026-02-10)"
+
+tags: [meta, knowledge-management, lessons-not-followed]

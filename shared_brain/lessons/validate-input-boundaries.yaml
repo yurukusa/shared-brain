@@ -1,0 +1,29 @@
+id: validate-input-boundaries
+severity: warning
+created: "2026-02-10"
+
+trigger_patterns:
+  - "user_input"
+  - "request\\.body"
+  - "request\\.params"
+  - "form_data"
+  - "query_string"
+  - "argv"
+
+lesson: |
+  Always validate and sanitize external input at system boundaries.
+  User input, API responses, and file contents can contain
+  unexpected data that causes security vulnerabilities or crashes.
+
+  ALWAYS:
+  1. Validate type, length, and format
+  2. Sanitize for the target context (SQL, HTML, shell)
+  3. Reject invalid input early with clear error messages
+  4. Never trust data from external sources
+
+checklist:
+  - "Input type validated"
+  - "Input length bounded"
+  - "Sanitized for target context"
+
+tags: [security, input, validation]

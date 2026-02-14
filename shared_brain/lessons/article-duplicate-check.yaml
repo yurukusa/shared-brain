@@ -1,0 +1,39 @@
+id: article-duplicate-check
+severity: high
+created: "2026-02-13"
+violated_count: 1
+last_violated: "2026-02-12"
+
+trigger_patterns:
+  - "POST.*qiita.com/api"
+  - "POST.*dev.to/api/articles"
+  - "POST.*blog.hatena.ne.jp"
+  - "POST.*zenn.dev/api/articles"
+  - "POST.*note.com"
+  - "qiita.*items.*POST"
+  - "articles.*POST"
+
+lesson: |
+  記事を投稿する前に、同タイトルの記事が既に存在しないか確認せよ。
+
+  この教訓は実際の事故から生まれた: Qiitaへの投稿時にAPIレスポンスの
+  確認が不十分で、成功していたのにリトライし、同じ記事が4件作成された。
+  3件を手動で削除する羽目になった。
+
+  ALWAYS:
+  1. 投稿前にGETで既存記事一覧を取得
+  2. 同タイトル（部分一致でも）の記事が存在するか確認
+  3. 存在する場合は投稿を中止し、既存URLを返す
+  4. POST後のHTTPステータスコードを確認（201=成功）
+  5. 成功後は絶対にリトライしない
+
+checklist:
+  - "GET で既存記事一覧を取得した"
+  - "同タイトルの記事が存在しないことを確認した"
+  - "POSTレスポンスのステータスコードを確認した"
+  - "成功後にリトライしていない"
+
+source:
+  incident: "Qiita 4重複投稿事故 (2026-02-12)"
+
+tags: [api, duplicate, article, publishing]

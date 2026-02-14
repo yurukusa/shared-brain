@@ -1,0 +1,30 @@
+id: no-production-db-direct
+severity: critical
+created: "2026-02-10"
+
+trigger_patterns:
+  - "DROP TABLE"
+  - "DROP DATABASE"
+  - "DELETE FROM.*WHERE"
+  - "TRUNCATE"
+  - "UPDATE.*SET.*WHERE"
+  - "psql.*production"
+  - "mysql.*production"
+
+lesson: |
+  Never run destructive queries directly against a production database.
+  One wrong WHERE clause can destroy user data.
+
+  ALWAYS:
+  1. Test the query on staging/dev first
+  2. Run a SELECT with the same WHERE clause to preview affected rows
+  3. Wrap destructive operations in a transaction with ROLLBACK ready
+  4. Have a backup before running migrations
+
+checklist:
+  - "Query tested on non-production environment"
+  - "SELECT preview of affected rows"
+  - "Transaction wrapped with rollback plan"
+  - "Recent backup exists"
+
+tags: [database, destructive, data-loss]

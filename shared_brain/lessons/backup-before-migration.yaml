@@ -1,0 +1,28 @@
+id: backup-before-migration
+severity: warning
+created: "2026-02-10"
+
+trigger_patterns:
+  - "migrate"
+  - "migration"
+  - "schema change"
+  - "ALTER TABLE"
+  - "alembic"
+  - "django.*migrate"
+
+lesson: |
+  Always create a backup before running database migrations.
+  Migrations can be irreversible and corrupt data if they fail midway.
+
+  ALWAYS:
+  1. Back up the database before migrating
+  2. Test the migration on a copy first
+  3. Have a rollback plan
+  4. Run during low-traffic periods
+
+checklist:
+  - "Database backup created"
+  - "Migration tested on staging"
+  - "Rollback plan documented"
+
+tags: [database, migration, backup]

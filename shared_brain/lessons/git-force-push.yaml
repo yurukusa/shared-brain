@@ -1,0 +1,33 @@
+id: git-force-push
+severity: critical
+created: "2026-02-05"
+violated_count: 0
+
+trigger_patterns:
+  - "git push.*--force"
+  - "git push.*-f "
+  - "git reset --hard"
+  - "git clean -fd"
+  - "rm -rf"
+
+lesson: |
+  Force push, hard reset, and recursive delete are destructive
+  operations that cannot be easily undone.
+
+  Before any destructive git operation:
+  1. Create a backup branch
+  2. Verify you're on the correct branch
+  3. Confirm the operation with the user
+
+  Force pushing to main/master should NEVER happen without
+  explicit user request.
+
+checklist:
+  - "Created backup branch (git checkout -b backup/...)"
+  - "Verified current branch is correct"
+  - "User explicitly requested this destructive operation"
+
+source:
+  incident: "Draemorth project destruction (2026-02-03)"
+
+tags: [git, destructive, irreversible]

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
+[![Tests](https://img.shields.io/badge/tests-170%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)](https://github.com/yurukusa/shared-brain)
 [![P99 Latency](https://img.shields.io/badge/P99%20latency-93ms-blue.svg)](https://github.com/yurukusa/shared-brain)
@@ -32,7 +32,42 @@ Shared Brain is a CLI tool that:
 
 Python 3.8+ required. Check with: `python3 --version`
 
-## Quick Start
+## 60-Second Install (PyPI)
+
+```bash
+# 1. Set up virtual environment
+sudo apt-get update && sudo apt-get install -y python3-venv  # Debian/Ubuntu only
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+
+# 2. Install
+pip install shared-brain
+
+# 3. Try it
+brain help
+brain list
+brain guard "curl -X PUT https://api.example.com/articles/123"
+```
+
+> **Note**: On some systems, the package is `python3.12-venv` (match your Python version).
+
+> **Tip**: To use `brain` outside the venv, add an alias:
+> ```bash
+> echo 'alias brain="$(pwd)/.venv/bin/brain"' >> ~/.bashrc
+> ```
+
+<details>
+<summary>Alternative: install without venv (not recommended)</summary>
+
+```bash
+pip install --user --break-system-packages shared-brain
+```
+
+This installs globally and may conflict with system packages. Use only as a last resort.
+</details>
+
+## Quick Start (from source)
 
 ```bash
 # Install
@@ -168,7 +203,7 @@ Ships with 11 lessons covering the most common agent mistakes:
 | P95 latency | 86ms |
 | P99 latency | 93ms |
 | Throughput | 13 ops/sec |
-| Test suite | 130 tests, 0.98s |
+| Test suite | 170 tests, 0.98s |
 
 Guard checks add negligible overhead to your workflow. Run `brain benchmark` to test on your machine.
 
@@ -224,10 +259,29 @@ AIエージェントが**失敗から学び、その教訓を共有し、本当�
 | `brain stats` | 統計サマリーを表示 |
 | `brain hook install` | Claude Codeのhookとして自動インストール |
 
-### クイックスタート
+### 60秒で試す（PyPI）
 
 ```bash
-# インストール
+# 1. 仮想環境をセットアップ
+sudo apt-get update && sudo apt-get install -y python3-venv  # Debian/Ubuntuのみ
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+
+# 2. インストール
+pip install shared-brain
+
+# 3. 試す
+brain help
+brain list
+brain guard "curl -X PUT https://api.example.com/articles/123"
+```
+
+> **注意**: 環境によっては `python3.12-venv` など、Pythonバージョンに合わせたパッケージ名になります。
+
+### ソースからインストール
+
+```bash
 git clone https://github.com/yurukusa/shared-brain.git
 cd shared-brain
 mkdir -p ~/bin && export PATH=~/bin:$PATH
