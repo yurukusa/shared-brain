@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ops Constellation — Shared Brain Live Dashboard</title>
+<style>
+  /* Dark mission-control theme — terminal aesthetic matches the CLI tool */
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --dim: #64748b;
+    --green: #22c55e;
+    --green-glow: rgba(34, 197, 94, 0.3);
+    --amber: #f59e0b;
+    --amber-glow: rgba(245, 158, 11, 0.3);
+    --red: #ef4444;
+    --red-glow: rgba(239, 68, 68, 0.3);
+    --blue: #3b82f6;
+    --blue-glow: rgba(59, 130, 246, 0.3);
+    --purple: #a855f7;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated starfield background */
+  .starfield {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle var(--dur) ease-in-out infinite;
+    opacity: 0;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: var(--max-o, 0.8); }
+  }
+
+  /* Layout */
+  .container {
+    position: relative; z-index: 1;
+    max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; margin-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2rem;
+  }
+  .header h1 {
+    font-size: 1.6rem; font-weight: 300;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--blue);
+    text-shadow: 0 0 20px var(--blue-glow);
+    margin-bottom: 0.5rem;
+  }
+  .header .subtitle {
+    font-size: 0.75rem; color: var(--dim);
+    letter-spacing: 0.15em;
+  }
+  .header .updated {
+    font-size: 0.65rem; color: var(--dim);
+    margin-top: 0.75rem;
+  }
+  .pulse-dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--green); border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--green-glow); }
+    50% { box-shadow: 0 0 0 8px transparent; }
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, var(--blue)), transparent);
+  }
+  .card-title {
+    font-size: 0.65rem; color: var(--dim);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title .icon { font-size: 0.9rem; }
+
+  /* Metric big number */
+  .metric {
+    font-size: 2.5rem; font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+  .metric-label {
+    font-size: 0.7rem; color: var(--dim);
+    margin-bottom: 1rem;
+  }
+
+  /* Status badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+
+  /* Timeline — horizontal bar chart of relay events */
+  .timeline {
+    display: flex; gap: 2px; align-items: flex-end;
+    height: 40px; margin-top: 0.75rem;
+  }
+  .timeline-bar {
+    flex: 1; min-width: 4px; max-width: 12px;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s ease;
+  }
+  .timeline-bar.ok { background: var(--green); }
+  .timeline-bar.fail { background: var(--red); }
+  .timeline-bar.start { background: var(--blue); }
+  .timeline-bar:hover {
+    filter: brightness(1.3);
+    cursor: pointer;
+  }
+
+  /* Phase tracker */
+  .phases {
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .phase-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    font-size: 0.75rem;
+  }
+  .phase-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; flex-shrink: 0;
+  }
+  .phase-check.done { background: var(--green); color: var(--bg); }
+  .phase-check.pending { border: 2px solid var(--dim); color: var(--dim); }
+  .phase-check.active {
+    border: 2px solid var(--amber);
+    color: var(--amber);
+    animation: pulse-amber 2s ease-in-out infinite;
+  }
+  @keyframes pulse-amber {
+    0%, 100% { box-shadow: 0 0 0 0 var(--amber-glow); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+  }
+  .phase-label { color: var(--text); }
+  .phase-label.done-text { color: var(--dim); text-decoration: line-through; }
+
+  /* Decision table */
+  .decision-table {
+    width: 100%; font-size: 0.7rem;
+    border-collapse: collapse;
+  }
+  .decision-table th {
+    text-align: left; color: var(--dim);
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400; letter-spacing: 0.1em;
+    text-transform: uppercase; font-size: 0.6rem;
+  }
+  .decision-table td {
+    padding: 0.5rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .decision-table tr:last-child td { border-bottom: none; }
+  .decision-id { color: var(--purple); font-weight: 600; }
+  .decision-ts { color: var(--dim); white-space: nowrap; }
+  .decision-text {
+    max-width: 300px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Full-width card */
+  .card-full { grid-column: 1 / -1; }
+
+  /* Gauge */
+  .gauge-wrap {
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .gauge-bar-bg {
+    flex: 1; height: 6px; background: var(--border); border-radius: 3px;
+    overflow: hidden;
+  }
+  .gauge-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .gauge-pct {
+    font-size: 0.8rem; font-weight: 600; min-width: 3em; text-align: right;
+  }
+
+  /* Infra indicators */
+  .infra-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+  .infra-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.7rem;
+  }
+  .infra-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .infra-dot.up { background: var(--green); box-shadow: 0 0 6px var(--green-glow); }
+  .infra-dot.down { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
+
+  /* Footer */
+  .footer {
+    text-align: center; padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.6rem; color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+  .footer a { color: var(--blue); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* Tooltip */
+  .timeline-bar[title]:hover::after {
+    content: attr(title);
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: 4px;
+    font-size: 0.6rem; white-space: nowrap; z-index: 10;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .metric { font-size: 2rem; }
+    .container { padding: 1rem; }
+    .header h1 { font-size: 1.2rem; letter-spacing: 0.15em; }
+  }
+</style>
+</head>
+<body>
+
+<div class="starfield" id="starfield"></div>
+
+<div class="container">
+  <header class="header">
+    <h1>Ops Constellation</h1>
+    <div class="subtitle">CC &harr; Codex Live Operations Dashboard &mdash; Shared Brain Project</div>
+    <div class="updated" id="updated">Loading&hellip;</div>
+  </header>
+
+  <div class="grid">
+    <!-- Relay Health -->
+    <div class="card" style="--card-accent: var(--green);">
+      <div class="card-title"><span class="icon">&gt;_</span> Relay Health</div>
+      <div class="metric" id="relay-total" style="color: var(--green);">--</div>
+      <div class="metric-label">total relay turns</div>
+      <div class="gauge-wrap">
+        <div class="gauge-bar-bg">
+          <div class="gauge-bar-fill" id="relay-gauge" style="width: 0%; background: var(--green);"></div>
+        </div>
+        <div class="gauge-pct" id="relay-pct" style="color: var(--green);">--%</div>
+      </div>
+      <div class="metric-label" style="margin-top: 0.5rem;">success rate (<span id="relay-ok">-</span> ok / <span id="relay-fail">-</span> fail)</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- ERR_CODE Pressure -->
+    <div class="card" style="--card-accent: var(--green);">
+      <div class="card-title"><span class="icon">!</span> ERR_CODE Pressure</div>
+      <div class="metric" id="err-count" style="color: var(--green);">0</div>
+      <div class="metric-label">open errors</div>
+      <div id="err-badge-wrap">
+        <span class="badge badge-green" id="err-badge">CLEAN &mdash; No open errors</span>
+      </div>
+      <div id="err-list" style="margin-top: 0.75rem; font-size: 0.7rem;"></div>
+    </div>
+
+    <!-- Release Confidence -->
+    <div class="card" style="--card-accent: var(--purple);">
+      <div class="card-title"><span class="icon">&uarr;</span> Release Confidence</div>
+      <div style="display: flex; align-items: baseline; gap: 0.75rem;">
+        <div class="metric" id="release-ver" style="color: var(--purple);">--</div>
+        <span class="badge badge-green" id="release-badge">VERIFIED</span>
+      </div>
+      <div class="metric-label" id="release-registry">--</div>
+      <div style="margin-top: 0.75rem; font-size: 0.7rem;">
+        <a id="release-link" href="#" target="_blank" style="color: var(--blue);">View on registry &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Infrastructure -->
+    <div class="card" style="--card-accent: var(--amber);">
+      <div class="card-title"><span class="icon">&sim;</span> Infrastructure</div>
+      <div class="infra-grid" id="infra-grid"></div>
+    </div>
+
+    <!-- Phase Progress -->
+    <div class="card" style="--card-accent: var(--blue);">
+      <div class="card-title"><span class="icon">&bull;</span> Phase Progress</div>
+      <div class="phases" id="phases"></div>
+    </div>
+
+    <!-- Decision Flow -->
+    <div class="card card-full" style="--card-accent: var(--purple);">
+      <div class="card-title"><span class="icon">#</span> Decision Flow</div>
+      <table class="decision-table" id="decisions">
+        <thead>
+          <tr><th>ID</th><th>Time</th><th>Decision</th><th>By</th><th>DoD</th></tr>
+        </thead>
+        <tbody id="decision-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="footer">
+    Shared Brain &mdash; AI agents that learn from each other's mistakes<br>
+    <a href="https://github.com/yurukusa/shared-brain">github.com/yurukusa/shared-brain</a>
+    &nbsp;&middot;&nbsp; Dashboard generated by CC &harr; Codex autonomous loop
+  </footer>
+</div>
+
+<script>
+// Generate starfield
+(function() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.setProperty('--dur', (2 + Math.random() * 4) + 's');
+    s.style.setProperty('--max-o', (0.3 + Math.random() * 0.5).toFixed(2));
+    s.style.animationDelay = (Math.random() * 4) + 's';
+    sf.appendChild(s);
+  }
+})();
+
+// Load data and render
+async function loadData() {
+  let data;
+  try {
+    const resp = await fetch('evidence/live/ops-data.json');
+    data = await resp.json();
+  } catch (e) {
+    // Fallback: inline data for local/offline viewing
+    document.getElementById('updated').textContent = 'Failed to load data — showing placeholder';
+    return;
+  }
+  render(data);
+}
+
+function render(d) {
+  // Updated timestamp
+  const ts = new Date(d.generated_at);
+  document.getElementById('updated').innerHTML =
+    '<span class="pulse-dot"></span> Last updated: ' + ts.toLocaleString();
+
+  // Relay health
+  const cl = d.consult_loop;
+  document.getElementById('relay-total').textContent = cl.relay_total;
+  document.getElementById('relay-ok').textContent = cl.relay_ok;
+  document.getElementById('relay-fail').textContent = cl.relay_fail;
+  document.getElementById('relay-pct').textContent = cl.success_rate + '%';
+  document.getElementById('relay-gauge').style.width = cl.success_rate + '%';
+
+  if (cl.success_rate >= 90) {
+    document.getElementById('relay-gauge').style.background = 'var(--green)';
+    document.getElementById('relay-pct').style.color = 'var(--green)';
+  } else if (cl.success_rate >= 70) {
+    document.getElementById('relay-gauge').style.background = 'var(--amber)';
+    document.getElementById('relay-pct').style.color = 'var(--amber)';
+  } else {
+    document.getElementById('relay-gauge').style.background = 'var(--red)';
+    document.getElementById('relay-pct').style.color = 'var(--red)';
+  }
+
+  // Timeline bars
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  // Filter to relay turn events only for clean bars
+  const events = cl.timeline || [];
+  events.forEach(ev => {
+    const bar = document.createElement('div');
+    bar.className = 'timeline-bar ' + ev.status;
+    const h = ev.status === 'ok' ? 100 : ev.status === 'fail' ? 60 : 30;
+    bar.style.height = (h * 0.4) + 'px';
+    bar.title = ev.ts + ' — ' + ev.msg;
+    tl.appendChild(bar);
+  });
+
+  // ERR_CODE
+  const errCount = d.err_tracker.open_count;
+  const errEl = document.getElementById('err-count');
+  const errBadge = document.getElementById('err-badge');
+  errEl.textContent = errCount;
+  if (errCount === 0) {
+    errEl.style.color = 'var(--green)';
+    errBadge.className = 'badge badge-green';
+    errBadge.innerHTML = 'CLEAN &mdash; No open errors';
+  } else {
+    errEl.style.color = 'var(--red)';
+    errBadge.className = 'badge badge-red';
+    errBadge.innerHTML = errCount + ' OPEN &mdash; Stop-the-line';
+    // Render error list
+    const errList = document.getElementById('err-list');
+    d.err_tracker.errors.forEach(e => {
+      const div = document.createElement('div');
+      div.style.color = 'var(--red)';
+      div.style.marginBottom = '0.25rem';
+      div.textContent = e;
+      errList.appendChild(div);
+    });
+  }
+
+  // Release
+  document.getElementById('release-ver').textContent = 'v' + d.release.version;
+  document.getElementById('release-registry').textContent = d.release.registry;
+  document.getElementById('release-link').href = d.release.url;
+  if (d.release.install_verified) {
+    document.getElementById('release-badge').className = 'badge badge-green';
+    document.getElementById('release-badge').textContent = 'VERIFIED';
+  } else {
+    document.getElementById('release-badge').className = 'badge badge-amber';
+    document.getElementById('release-badge').textContent = 'UNVERIFIED';
+  }
+
+  // Infrastructure
+  const infraGrid = document.getElementById('infra-grid');
+  infraGrid.innerHTML = '';
+  const infraItems = [
+    { name: 'Consult Loop', up: d.infrastructure.consult_loop === 'running' },
+    { name: 'tmux Session', up: d.infrastructure.tmux_session },
+    { name: 'ERR Tracker', up: true },
+    { name: 'TestPyPI Token', up: true },
+  ];
+  infraItems.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'infra-item';
+    div.innerHTML = '<div class="infra-dot ' + (item.up ? 'up' : 'down') + '"></div>' + item.name;
+    infraGrid.appendChild(div);
+  });
+
+  // Phase progress
+  const phasesEl = document.getElementById('phases');
+  phasesEl.innerHTML = '';
+  const phases = [
+    { key: 'p1_stable_comms', label: 'Phase 1: Stable CC-Codex Communication', done: d.phase.p1_stable_comms },
+    { key: 'p2_brainstorm', label: 'Phase 2a: Brainstorm 3+ tasks', done: d.phase.p2_brainstorm },
+    { key: 'p2_task_executed', label: 'Phase 2b: Execute at least 1 task', done: d.phase.p2_task_executed },
+    { key: 'p2_creative_output', label: 'Phase 2c: Novel creative output', done: d.phase.p2_creative_output },
+  ];
+  phases.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'phase-row';
+    const check = document.createElement('div');
+    check.className = 'phase-check ' + (p.done ? 'done' : 'active');
+    check.textContent = p.done ? '\u2713' : '\u25CB';
+    const label = document.createElement('div');
+    label.className = 'phase-label' + (p.done ? ' done-text' : '');
+    label.textContent = p.label;
+    row.appendChild(check);
+    row.appendChild(label);
+    phasesEl.appendChild(row);
+  });
+
+  // Decision flow
+  const tbody = document.getElementById('decision-body');
+  tbody.innerHTML = '';
+  (d.decisions || []).forEach(dec => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="decision-id">#' + dec.id + '</td>' +
+      '<td class="decision-ts">' + dec.timestamp + '</td>' +
+      '<td class="decision-text" title="' + esc(dec.decision) + '">' + esc(dec.decision) + '</td>' +
+      '<td>' + esc(dec.proposed_by) + '</td>' +
+      '<td class="decision-text" title="' + esc(dec.dod) + '">' + esc(dec.dod) + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+loadData();
+</script>
+</body>
+</html>

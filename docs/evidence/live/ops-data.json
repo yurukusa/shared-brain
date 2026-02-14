@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-02-14T10:57:49Z",
+  "consult_loop": {
+    "status": "stopped",
+    "relay_total": 22,
+    "relay_ok": 20,
+    "relay_fail": 4,
+    "success_rate": 83.3,
+    "timeline": [{"ts": "2026-02-14 19:23:15", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:23:15", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:26:20", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:26:22", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:26:22", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:29:27", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:29:29", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:29:29", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:33:38", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:34:40", "msg": "relay: cc-send failed (agent busy?)", "status": "fail"}, {"ts": "2026-02-14 19:34:40", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:37:45", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:37:47", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:37:47", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:40:52", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:40:53", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:40:53", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:43:58", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:44:01", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:44:01", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:48:10", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:49:11", "msg": "relay: cc-send failed (agent busy?)", "status": "fail"}, {"ts": "2026-02-14 19:49:11", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:54:00", "msg": "consult loop started interval=180s max_turns=0", "status": "start"}, {"ts": "2026-02-14 19:54:25", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:54:28", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:54:28", "msg": "relay turn completed", "status": "ok"}, {"ts": "2026-02-14 19:57:33", "msg": "relay: codex-send ok", "status": "ok"}, {"ts": "2026-02-14 19:57:35", "msg": "relay: cc-send ok", "status": "ok"}, {"ts": "2026-02-14 19:57:35", "msg": "relay turn completed", "status": "ok"}]
+  },
+  "err_tracker": {
+    "open_count": 0,
+    "errors": []
+  },
+  "release": {
+    "version": "0.1.0",
+    "registry": "TestPyPI",
+    "url": "https://test.pypi.org/project/shared-brain/0.1.0/",
+    "install_verified": true
+  },
+  "decisions": [{"id": "1", "timestamp": "2026-02-14 19:55", "decision": "Adopt structured protocol (PROPOSE/RISK/NEED_DECISION \u2194 DECISION/EXECUTE_BY/DOD)", "proposed_by": "Codex", "dod": "Protocol messages enforced, consult-loop = status only"}, {"id": "2", "timestamp": "2026-02-14 20:00", "decision": "Build Ops Constellation MVP: HTML dashboard at shared-brain/docs/ops-dashboard.html. Priority: operational judgment first, visual polish second. Data: consult-loop health, ERR_CODE pressure, release confidence, decision flow. Manual update MVP.", "proposed_by": "Codex", "dod": "Dashboard renders with real data, accessible via GitHub Pages"}],
+  "infrastructure": {
+    "consult_loop": "stopped",
+    "tmux_session": true
+  },
+  "phase": {
+    "p1_stable_comms": true,
+    "p2_brainstorm": true,
+    "p2_task_executed": true,
+    "p2_creative_output": false
+  }
+}
