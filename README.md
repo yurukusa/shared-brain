@@ -12,7 +12,7 @@
 
 ## Demo
 
-[![asciicast](https://asciinema.org/a/M60qmrt7QscqWVLb.svg)](https://asciinema.org/a/M60qmrt7QscqWVLb)
+[![asciicast](https://asciinema.org/a/qSzUi5lzT1jiJLre.svg)](https://asciinema.org/a/qSzUi5lzT1jiJLre)
 
 ## The Problem
 

@@ -141,13 +141,15 @@ def _parse_yaml_simple(text: str) -> dict:
             result[current_key].append(val)
             continue
 
-        # Nested key (simple one-level)
+        # Nested key (simple one-level) — only if current key has no value or is already a dict
         m = re.match(r'^  (\w[\w_-]*)\s*:\s*(.*)', line)
         if m and current_key:
-            if not isinstance(result.get(current_key), dict):
-                result[current_key] = {}
-            nk, nv = m.group(1), m.group(2).strip().strip("'\"")
-            result[current_key][nk] = nv
+            existing = result.get(current_key)
+            if existing is None or isinstance(existing, dict):
+                if not isinstance(existing, dict):
+                    result[current_key] = {}
+                nk, nv = m.group(1), m.group(2).strip().strip("'\"")
+                result[current_key][nk] = nv
 
     if multiline_key:
         result[multiline_key] = "\n".join(multiline_lines).strip()
@@ -455,6 +457,8 @@ def guard(command: str, agent: str = "unknown", auto_confirm: bool = False) -> b
         print(f"{'='*60}")
 
         lesson_text = lesson.get("lesson", msg("guard_no_description"))
+        if not isinstance(lesson_text, str):
+            lesson_text = str(lesson_text)
         for line in lesson_text.strip().split("\n"):
             print(f"   {line}")
 
@@ -675,6 +679,8 @@ def cmd_check(args):
         severity = lesson.get("severity", "info").upper()
         lid = lesson.get("id", "unknown")
         text = lesson.get("lesson", "")
+        if not isinstance(text, str):
+            text = str(text)
         first_line = text.split("\n")[0][:80] if text else msg("check_no_description")
         violated = lesson.get("violated_count", 0)
 
@@ -706,6 +712,8 @@ def cmd_list(args):
         loc = msg("list_builtin_label") if is_builtin else ""
 
         text = lesson.get("lesson", "")
+        if not isinstance(text, str):
+            text = str(text)
         first_line = text.split("\n")[0][:60] if text else msg("list_no_description")
 
         print(f"  {icon} {lid}{loc}")
@@ -981,6 +989,8 @@ def cmd_export(args):
             lines.append(msg("export_md_severity_label", severity=severity))
 
             text = lesson.get("lesson", "")
+            if isinstance(text, dict):
+                text = str(text)
             if text:
                 lines.append("")
                 lines.append(text.strip())
@@ -1041,7 +1051,10 @@ def _export_html(lessons: list) -> str:
         severity = lesson.get("severity", "info").upper()
         lid = lesson.get("id", "unknown")
         color = severity_colors.get(severity, "#17a2b8")
-        text = _html_escape(lesson.get("lesson", "")).replace("\n", "<br>")
+        _lesson_text = lesson.get("lesson", "")
+        if not isinstance(_lesson_text, str):
+            _lesson_text = str(_lesson_text)
+        text = _html_escape(_lesson_text).replace("\n", "<br>")
         checklist = lesson.get("checklist", [])
         patterns = lesson.get("trigger_patterns", [])
         tags = lesson.get("tags", [])
@@ -1365,6 +1378,8 @@ def cmd_search(args):
         print(f"  {icon} {BOLD}{lid}{RESET}  [{severity}]")
 
         text = lesson.get("lesson", "")
+        if not isinstance(text, str):
+            text = str(text)
         if text:
             for line in text.strip().split("\n")[:2]:
                 print(f"     {line[:100]}")

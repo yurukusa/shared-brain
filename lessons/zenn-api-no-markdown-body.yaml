@@ -1,0 +1,16 @@
+id: zenn-api-no-markdown-body
+lesson: >
+  Zenn's GET API (GET /api/articles/{slug}) does NOT return the Markdown body.
+  It only returns body_html. For article updates, use the local draft file
+  as body_markdown in the PUT payload. Do not waste calls investigating
+  why body is null.
+severity: info
+tags: [zenn, api, cdp]
+trigger_patterns:
+  - "zenn.dev/api/articles"
+  - "body.*null"
+checklist:
+  - Use local draft file as body_markdown source
+  - GET is only needed for metadata (title, emoji, topics, status)
+  - PUT accepts body_markdown field directly
+source: "Subagent a76b173 wasted 6 CDP calls investigating this (2026-02-13)"
