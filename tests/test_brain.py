@@ -27,11 +27,13 @@ def brain_home(tmp_path):
     original_lessons_dir = brain_engine.LESSONS_DIR
     original_audit_file = brain_engine.AUDIT_FILE
     original_builtin = brain_engine.BUILTIN_LESSONS
+    original_registry_dir = brain_engine.REGISTRY_ACTIVE_DIR
 
     brain_engine.BRAIN_DIR = home
     brain_engine.LESSONS_DIR = home / "lessons"
     brain_engine.AUDIT_FILE = home / "audit.jsonl"
     brain_engine.BUILTIN_LESSONS = tmp_path / "no_builtins"  # nonexistent dir
+    brain_engine.REGISTRY_ACTIVE_DIR = tmp_path / "no_registry"  # nonexistent dir
 
     yield home
 
@@ -40,6 +42,7 @@ def brain_home(tmp_path):
     brain_engine.LESSONS_DIR = original_lessons_dir
     brain_engine.AUDIT_FILE = original_audit_file
     brain_engine.BUILTIN_LESSONS = original_builtin
+    brain_engine.REGISTRY_ACTIVE_DIR = original_registry_dir
 
 
 @pytest.fixture
