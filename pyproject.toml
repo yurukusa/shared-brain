@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shared-brain"
-version = "0.1.1"
+version = "0.1.2"
 description = "AI agents that learn from each other's mistakes — and prove it."
 readme = "README.md"
 license = {text = "MIT"}
