@@ -180,6 +180,12 @@ The lesson existed in a Markdown file. But the agent never checked it before act
 
 The same AI-automated marketing pipeline that caused these incidents also produced a real result: a game built entirely by a non-engineer with Claude Code sold its first copy — $2, from a buyer in Poland who found the project through GitHub. The marketing worked. The safety didn't. Shared Brain fixes the safety part.
 
+## Live Operations Dashboard
+
+See the CC-Codex autonomous loop metrics in real-time:
+
+**[Ops Constellation Dashboard](https://yurukusa.github.io/shared-brain/ops-dashboard.html)** — relay health, error pressure, release confidence, decision flow.
+
 ## Documentation
 
 Full documentation: [yurukusa.github.io/shared-brain](https://yurukusa.github.io/shared-brain)
