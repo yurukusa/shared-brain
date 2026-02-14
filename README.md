@@ -4,7 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-170%20passed-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
 [![No Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/yurukusa/shared-brain)
-[![Lessons](https://img.shields.io/badge/built--in%20lessons-11-blue.svg)](https://github.com/yurukusa/shared-brain)
+[![Lessons](https://img.shields.io/badge/built--in%20lessons-21-blue.svg)](https://github.com/yurukusa/shared-brain)
 [![P99 Latency](https://img.shields.io/badge/P99%20latency-93ms-blue.svg)](https://github.com/yurukusa/shared-brain)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/yurukusa)
 
@@ -176,7 +176,7 @@ brain hook uninstall
 
 ## Built-in Lessons (Starter Pack)
 
-Ships with 11 lessons covering the most common agent mistakes:
+Ships with 21 lessons covering common agent mistakes. Here are the universal ones:
 
 | ID | Severity | What It Catches |
 |----|----------|----------------|
@@ -185,12 +185,16 @@ Ships with 11 lessons covering the most common agent mistakes:
 | `no-secrets-in-code` | 🔴 Critical | API keys/passwords in commits |
 | `no-production-db-direct` | 🔴 Critical | Destructive queries on production DB |
 | `dont-delete-without-confirm` | 🔴 Critical | Deleting files/resources without backup |
+| `knowledge-execution-gap` | 🔴 Critical | Having the answer but not using it |
+| `article-duplicate-check` | 🔵 High | Posting duplicate content |
 | `verify-before-claim` | 🟡 Warning | Claiming success without verification |
 | `test-before-deploy` | 🟡 Warning | Deploying without running tests |
 | `backup-before-migration` | 🟡 Warning | DB migration without backup |
 | `check-rate-limits` | 🟡 Warning | Bulk API requests without rate limiting |
 | `validate-input-boundaries` | 🟡 Warning | Unsanitized external input |
 | `read-error-messages` | ℹ️ Info | Ignoring error messages when debugging |
+
+Plus 8 additional lessons from real-world CDP/browser automation and platform-specific incidents.
 
 ## Benchmark
 
@@ -309,9 +313,9 @@ brain audit
 2. **ガード（Guard）** — `brain guard` を実行すると、コマンドを全教訓のトリガーパターンと照合。一致すれば教訓を表示し確認を求める
 3. **監査証跡（Audit）** — 全てのガードチェックを `~/.brain/audit.jsonl` に記録。「読んだか・守ったか」をデータで証明
 
-### 同梱教訓（11個）
+### 同梱教訓（21個）
 
-GETなしPUT、force push、本番DB直接操作、シークレットのコミット、バックアップなし削除など、AIエージェントがよく犯すミスをカバーする11個の教訓が付属しています。
+GETなしPUT、force push、本番DB直接操作、シークレットのコミット、バックアップなし削除など、AIエージェントがよく犯すミスをカバーする21個の教訓が付属しています。実際の運用事故から生まれたCDP/ブラウザ自動化やプラットフォーム固有の教訓も含みます。
 
 ### ライセンス
 
